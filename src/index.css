@@ -1,0 +1,363 @@
+@import "tailwindcss";
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+html.overlay-root,
+body.overlay-root,
+html.overlay-root #root {
+  background: transparent !important;
+}
+
+.overlay-shell {
+  background: transparent;
+}
+
+.overlay-image {
+  border-radius: 0.5rem;
+}
+
+.overlay-image-animated {
+  animation-fill-mode: both;
+  animation-timing-function: ease-in-out;
+}
+
+/* Enter animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInTop {
+  from { opacity: 0; transform: translateY(-80px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInBottom {
+  from { opacity: 0; transform: translateY(80px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-80px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(80px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes zoomIn {
+  from { opacity: 0; transform: scale(0.3); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes zoomInRotate {
+  from { opacity: 0; transform: scale(0.3) rotate(-180deg); }
+  to { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+@keyframes bounceIn {
+  0% { opacity: 0; transform: scale(0.3); }
+  50% { opacity: 1; transform: scale(1.05); }
+  70% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+@keyframes blurIn {
+  from { opacity: 0; filter: blur(12px); }
+  to { opacity: 1; filter: blur(0); }
+}
+
+@keyframes flipInX {
+  from { opacity: 0; transform: perspective(400px) rotateX(90deg); }
+  to { opacity: 1; transform: perspective(400px) rotateX(0deg); }
+}
+
+@keyframes flipInY {
+  from { opacity: 0; transform: perspective(400px) rotateY(90deg); }
+  to { opacity: 1; transform: perspective(400px) rotateY(0deg); }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Exit animations */
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideOutTop {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-80px); }
+}
+
+@keyframes slideOutBottom {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(80px); }
+}
+
+@keyframes slideOutLeft {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-80px); }
+}
+
+@keyframes slideOutRight {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(80px); }
+}
+
+@keyframes zoomOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.3); }
+}
+
+@keyframes zoomOutRotate {
+  from { opacity: 1; transform: scale(1) rotate(0deg); }
+  to { opacity: 0; transform: scale(0.3) rotate(180deg); }
+}
+
+@keyframes bounceOut {
+  0% { transform: scale(1); opacity: 1; }
+  25% { transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 0; transform: scale(0.3); }
+}
+
+@keyframes blurOut {
+  from { opacity: 1; filter: blur(0); }
+  to { opacity: 0; filter: blur(12px); }
+}
+
+@keyframes flipOutX {
+  from { opacity: 1; transform: perspective(400px) rotateX(0deg); }
+  to { opacity: 0; transform: perspective(400px) rotateX(90deg); }
+}
+
+@keyframes flipOutY {
+  from { opacity: 1; transform: perspective(400px) rotateY(0deg); }
+  to { opacity: 0; transform: perspective(400px) rotateY(90deg); }
+}
+
+@keyframes scaleDown {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.5); }
+}
+
+/* Enter utility classes */
+.anim-fadeIn-enter { animation-name: fadeIn; }
+.anim-slideInTop-enter { animation-name: slideInTop; }
+.anim-slideInBottom-enter { animation-name: slideInBottom; }
+.anim-slideInLeft-enter { animation-name: slideInLeft; }
+.anim-slideInRight-enter { animation-name: slideInRight; }
+.anim-zoomIn-enter { animation-name: zoomIn; }
+.anim-zoomInRotate-enter { animation-name: zoomInRotate; }
+.anim-bounceIn-enter { animation-name: bounceIn; }
+.anim-blurIn-enter { animation-name: blurIn; }
+.anim-flipInX-enter { animation-name: flipInX; }
+.anim-flipInY-enter { animation-name: flipInY; }
+.anim-scaleUp-enter { animation-name: scaleUp; }
+
+/* Exit utility classes */
+.anim-fadeOut-exit { animation-name: fadeOut; }
+.anim-slideOutTop-exit { animation-name: slideOutTop; }
+.anim-slideOutBottom-exit { animation-name: slideOutBottom; }
+.anim-slideOutLeft-exit { animation-name: slideOutLeft; }
+.anim-slideOutRight-exit { animation-name: slideOutRight; }
+.anim-zoomOut-exit { animation-name: zoomOut; }
+.anim-zoomOutRotate-exit { animation-name: zoomOutRotate; }
+.anim-bounceOut-exit { animation-name: bounceOut; }
+.anim-blurOut-exit { animation-name: blurOut; }
+.anim-flipOutX-exit { animation-name: flipOutX; }
+.anim-flipOutY-exit { animation-name: flipOutY; }
+.anim-scaleDown-exit { animation-name: scaleDown; }
+
+/* Preview mockup */
+.preview-mockup {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  border-radius: 0.75rem;
+  aspect-ratio: 16 / 9;
+  position: relative;
+  overflow: hidden;
+}
+
+.preview-mockup-image {
+  max-height: 40%;
+  max-width: 40%;
+  object-fit: contain;
+}
+
+/* Settings shell — full viewport, footer pinned */
+.settings-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: linear-gradient(to bottom, #fffbeb, #f5f5f4);
+  color: #292524;
+}
+
+/* Desktop wallpaper preview (right panel) */
+.preview-desktop {
+  background:
+    radial-gradient(ellipse at 70% 20%, rgba(251, 191, 36, 0.15) 0%, transparent 50%),
+    linear-gradient(180deg, #0f172a 0%, #1e293b 40%, #334155 70%, #475569 100%);
+  border-radius: 0.75rem;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 10;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.preview-desktop::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 45%;
+  background: linear-gradient(to top, rgba(15, 23, 42, 0.9), transparent);
+  pointer-events: none;
+}
+
+/* Toggle switch */
+.toggle-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.toggle-switch-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-switch-track {
+  display: block;
+  width: 2.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  background: #d6d3d1;
+  transition: background 0.2s;
+  position: relative;
+}
+
+.toggle-switch-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  background: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s;
+}
+
+.toggle-switch-input:checked + .toggle-switch-track {
+  background: #d97706;
+}
+
+.toggle-switch-input:checked + .toggle-switch-track::after {
+  transform: translateX(1rem);
+}
+
+.toggle-switch-input:focus-visible + .toggle-switch-track {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+/* Range slider accent */
+.range-amber {
+  accent-color: #d97706;
+}
+
+/* Settings tabs */
+.settings-tab {
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  padding: 0.375rem 0.875rem;
+  font-size: 0.875rem;
+  color: #78716c;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.settings-tab:hover {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.settings-tab-active {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: #92400e;
+  font-weight: 600;
+}
+
+/* Gallery grid — multi-column, fills available width */
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.75rem;
+}
+
+.gallery-grid-item {
+  min-width: 0;
+}
+
+.gallery-import-tile {
+  display: flex;
+  aspect-ratio: 1;
+  min-height: 100px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border-radius: 0.5rem;
+  border: 2px dashed #fcd34d;
+  background: rgb(255 251 235 / 0.6);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.gallery-import-tile:hover:not(:disabled) {
+  background: #fffbeb;
+}
+
+.gallery-import-tile:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.gallery-group-select {
+  border-radius: 0.25rem;
+  border: 1px solid #e7e5e4;
+  background: white;
+  padding: 0.125rem 0.25rem;
+  font-size: 10px;
+  color: #57534e;
+  cursor: pointer;
+}
+
+.gallery-group-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.gallery-group-select:focus {
+  outline: 2px solid #fcd34d;
+  outline-offset: 1px;
+}
