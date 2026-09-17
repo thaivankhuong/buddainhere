@@ -242,6 +242,10 @@ pub struct AppConfig {
 
     pub active_music_id: Option<String>,
 
+    #[serde(default)]
+
+    pub overlay_monitor_id: Option<String>,
+
 }
 
 
@@ -395,6 +399,8 @@ impl Default for AppConfig {
             music_tracks: Vec::new(),
 
             active_music_id: None,
+
+            overlay_monitor_id: None,
 
         }
 

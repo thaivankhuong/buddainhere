@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#B45309"/>
+  <g fill="none" stroke="#FEF3C7" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <!-- center petal -->
+    <path d="M256 148 C256 148 230 210 230 268 C230 300 240 318 256 328 C272 318 282 300 282 268 C282 210 256 148 256 148Z" fill="#FEF3C7" stroke="#FDE68A"/>
+    <!-- left inner -->
+    <path d="M256 160 C256 160 210 190 188 248 C178 278 188 308 210 322 C228 300 236 260 236 220 C236 195 248 172 256 160Z" fill="#FEF3C7" fill-opacity="0.95" stroke="#FDE68A"/>
+    <!-- right inner -->
+    <path d="M256 160 C256 160 302 190 324 248 C334 278 324 308 302 322 C284 300 276 260 276 220 C276 195 264 172 256 160Z" fill="#FEF3C7" fill-opacity="0.95" stroke="#FDE68A"/>
+    <!-- left outer -->
+    <path d="M256 175 C256 175 185 205 158 275 C145 315 160 355 195 372 C215 330 225 280 228 235 C230 205 242 185 256 175Z" fill="#FEF3C7" fill-opacity="0.85" stroke="#FDE68A"/>
+    <!-- right outer -->
+    <path d="M256 175 C256 175 327 205 354 275 C367 315 352 355 317 372 C297 330 287 280 284 235 C282 205 270 185 256 175Z" fill="#FEF3C7" fill-opacity="0.85" stroke="#FDE68A"/>
+    <!-- far left -->
+    <path d="M256 195 C256 195 170 230 145 300 C132 345 150 385 188 398 C200 350 210 295 215 250 C218 220 235 200 256 195Z" fill="#FEF3C7" fill-opacity="0.7" stroke="#FDE68A"/>
+    <!-- far right -->
+    <path d="M256 195 C256 195 342 230 367 300 C380 345 362 385 324 398 C312 350 302 295 297 250 C294 220 277 200 256 195Z" fill="#FEF3C7" fill-opacity="0.7" stroke="#FDE68A"/>
+    <!-- stem -->
+    <path d="M256 328 L256 390" stroke-width="12"/>
+    <path d="M256 360 C236 375 220 385 205 395" stroke-width="10"/>
+    <path d="M256 360 C276 375 292 385 307 395" stroke-width="10"/>
+  </g>
+  <!-- center dot -->
+  <circle cx="256" cy="248" r="10" fill="#D97706"/>
+</svg>

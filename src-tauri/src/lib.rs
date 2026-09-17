@@ -4,17 +4,21 @@ mod image_data;
 
 mod image_manager;
 
+mod monitor;
+
 mod thumbnail;
 
 use config::{
     display_name_from_path, gallery_dir, load_config, new_id, save_config, AppConfig, MusicTrack,
 };
+use monitor::{apply_overlay_monitor, list_monitors, MonitorInfo};
 
 use std::path::PathBuf;
 
 use std::sync::Mutex;
 
 use tauri::{
+    image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, State, WebviewWindow, Wry,
@@ -198,8 +202,14 @@ fn save_app_config(app: AppHandle, state: State<'_, AppState>, mut config: AppCo
     save_config(&config)?;
     *state.config.lock().unwrap() = config.clone();
     state.invalidate_gallery_cache();
+    apply_overlay_monitor(&app, config.overlay_monitor_id.as_deref())?;
     emit_config_changed(&app, &config);
     Ok(())
+}
+
+#[tauri::command]
+fn get_available_monitors(app: AppHandle) -> Result<Vec<MonitorInfo>, String> {
+    list_monitors(&app)
 }
 
 
@@ -437,6 +447,24 @@ fn rename_music_track(
 
 
 
+fn icon_png_path(name: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("icons").join(name)
+}
+
+fn load_app_icon() -> tauri::Result<Image<'static>> {
+    for name in ["32x32.png", "128x128.png"] {
+        let path = icon_png_path(name);
+        if path.exists() {
+            if let Ok(icon) = Image::from_path(&path) {
+                return Ok(icon);
+            }
+        }
+    }
+
+    Image::from_bytes(include_bytes!("../icons/32x32.png"))
+        .map_err(|e| -> tauri::Error { e.into() })
+}
+
 fn setup_overlay_window(window: &WebviewWindow) -> tauri::Result<()> {
 
     window.set_always_on_top(true)?;
@@ -487,17 +515,11 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
 
 
 
-    let icon = app
-
-        .default_window_icon()
-
-        .ok_or(tauri::Error::FailedToReceiveMessage)?
-
-        .clone();
+    let icon = load_app_icon()?;
 
 
 
-    let _tray = TrayIconBuilder::new()
+    let _tray = TrayIconBuilder::with_id("buddainhere-tray")
 
         .icon(icon)
 
@@ -600,6 +622,8 @@ pub fn run() {
 
             save_app_config,
 
+            get_available_monitors,
+
             get_images,
 
             get_gallery_images,
@@ -654,10 +678,13 @@ pub fn run() {
 
 
 
-            if let Some(window) = app.get_webview_window("main") {
-
+            if let Ok(icon) = load_app_icon() {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_icon(icon.clone());
+                    let _ = window.hide();
+                }
+            } else if let Some(window) = app.get_webview_window("main") {
                 let _ = window.hide();
-
             }
 
 
@@ -665,6 +692,15 @@ pub fn run() {
             if let Some(overlay) = app.get_webview_window("overlay") {
 
                 setup_overlay_window(&overlay)?;
+
+                let monitor_id = app
+                    .state::<AppState>()
+                    .config
+                    .lock()
+                    .unwrap()
+                    .overlay_monitor_id
+                    .clone();
+                let _ = apply_overlay_monitor(app.handle(), monitor_id.as_deref());
 
             }
 

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import {
   animEnterClass,
   animExitClass,
   type AppConfig,
   type ImagePosition,
+  type MonitorInfo,
 } from "../types/config";
 
 const PREVIEW_POSITION: Record<ImagePosition, string> = {
@@ -31,8 +33,16 @@ interface Props {
 
 export default function SettingsPreview({ config, previewImage }: Props) {
   const [phase, setPhase] = useState<Phase>("idle");
+  const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
   const timerRef = useRef<number | null>(null);
   const { src: previewSrc, loading } = useImageThumbnail(previewImage);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    invoke<MonitorInfo[]>("get_available_monitors")
+      .then(setMonitors)
+      .catch(() => setMonitors([]));
+  }, []);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -63,6 +73,12 @@ export default function SettingsPreview({ config, previewImage }: Props) {
         : "";
 
   const showImage = phase !== "idle" && previewSrc;
+
+  const monitorLabel =
+    monitors.length > 1
+      ? monitors.find((m) => m.id === (config.overlayMonitorId ?? monitors.find((p) => p.isPrimary)?.id))?.label ??
+        monitors.find((m) => m.isPrimary)?.label
+      : null;
 
   return (
     <SettingsSectionCard icon={<IconPreview />} title="Xem trước">
@@ -104,6 +120,12 @@ export default function SettingsPreview({ config, previewImage }: Props) {
           Xem thử
         </button>
         <p className="text-xs text-stone-500">
+          {monitorLabel && (
+            <>
+              Màn hình: <span className="text-stone-700">{monitorLabel}</span>
+              {" · "}
+            </>
+          )}
           Vị trí: <span className="text-stone-700">{config.imagePosition}</span>
           {" · "}
           Vào: <span className="text-stone-700">{config.animationIn}</span>

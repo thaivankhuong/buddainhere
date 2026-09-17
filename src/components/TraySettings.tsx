@@ -9,13 +9,14 @@ import {
 import SettingsPreview from "./SettingsPreview";
 import GalleryTab from "./GalleryTab";
 import MusicLibrary from "./MusicLibrary";
+import MonitorPicker from "./MonitorPicker";
 import PositionPicker from "./PositionPicker";
 import AnimationPicker from "./AnimationPicker";
 import CycleDurationInput from "./CycleDurationInput";
 import DharmaSpinner from "./DharmaSpinner";
 import SettingsSectionCard from "./SettingsSectionCard";
 import ToggleSwitch from "./ToggleSwitch";
-import { IconEffects, IconLotus, IconPosition, IconSound } from "./SettingsIcons";
+import { IconEffects, IconLotus, IconMonitor, IconPosition, IconSound } from "./SettingsIcons";
 
 type SettingsTab = "settings" | "gallery";
 
@@ -26,6 +27,7 @@ function normalizeConfig(cfg: AppConfig): AppConfig {
     imageGroupAssignments: cfg.imageGroupAssignments ?? {},
     musicTracks: cfg.musicTracks ?? [],
     activeMusicId: cfg.activeMusicId ?? null,
+    overlayMonitorId: cfg.overlayMonitorId ?? null,
   };
 }
 
@@ -194,6 +196,13 @@ export default function TraySettings() {
       {activeTab === "settings" ? (
         <main className="grid min-h-0 flex-1 grid-cols-[1fr_340px] gap-5 px-6 py-4">
           <div className="min-h-0 space-y-3 overflow-y-auto pr-1">
+            <SettingsSectionCard icon={<IconMonitor />} title="Màn hình hiển thị">
+              <MonitorPicker
+                value={draftConfig.overlayMonitorId}
+                onChange={(overlayMonitorId) => updateDraft({ overlayMonitorId })}
+              />
+            </SettingsSectionCard>
+
             <SettingsSectionCard icon={<IconPosition />} title="Vị trí hiển thị">
               <PositionPicker
                 value={draftConfig.imagePosition}
