@@ -1,5 +1,7 @@
 mod config;
 
+mod dhammapada_image;
+
 mod image_data;
 
 mod image_manager;
@@ -184,6 +186,12 @@ fn emit_overlay_next(app: &AppHandle) {
 
 
 
+fn emit_dhammapada_memorize(app: &AppHandle) {
+    let _ = app.emit("dhammapada-memorize-current", ());
+}
+
+
+
 #[tauri::command]
 
 fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String> {
@@ -283,7 +291,13 @@ fn next_image_display_data_url(state: State<'_, AppState>) -> Result<String, Str
     image_data::to_data_url(display_str)
 }
 
-
+#[tauri::command]
+fn get_dhammapada_verse_image_display_data_url(
+    app: AppHandle,
+    image_id: u32,
+) -> Result<Option<String>, String> {
+    dhammapada_image::load_verse_image_display_data_url(&app, image_id)
+}
 
 #[derive(serde::Serialize)]
 
@@ -501,15 +515,32 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
 
     let settings_item = MenuItem::with_id(app, "settings", "Cài đặt", true, None::<&str>)?;
 
+    let memorize_item = MenuItem::with_id(
+        app,
+        "dhammapada_memorize",
+        "Đã nhớ kệ đang hiện",
+        true,
+        None::<&str>,
+    )?;
+
     let quit_item = MenuItem::with_id(app, "quit", "Thoát", true, None::<&str>)?;
 
     let separator = PredefinedMenuItem::separator(app)?;
+    let separator2 = PredefinedMenuItem::separator(app)?;
 
     let menu = Menu::with_items(
 
         app,
 
-        &[&next_item, &pause_item, &separator, &settings_item, &quit_item],
+        &[
+            &next_item,
+            &pause_item,
+            &memorize_item,
+            &separator,
+            &settings_item,
+            &separator2,
+            &quit_item,
+        ],
 
     )?;
 
@@ -536,6 +567,8 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
             match event.id().as_ref() {
 
                 "next" => emit_overlay_next(app),
+
+                "dhammapada_memorize" => emit_dhammapada_memorize(app),
 
                 "pause" => {
                     let mut config = state.config.lock().unwrap().clone();
@@ -637,6 +670,8 @@ pub fn run() {
             next_image_display_path,
 
             next_image_display_data_url,
+
+            get_dhammapada_verse_image_display_data_url,
 
             get_image_data_url,
 

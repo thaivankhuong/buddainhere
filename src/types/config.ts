@@ -48,6 +48,18 @@ export interface MusicTrack {
   displayName: string;
 }
 
+export interface ScheduleSlot {
+  id: string;
+  enabled: boolean;
+  /** "HH:MM" 24h, e.g. "08:00" */
+  time: string;
+  durationSecs: number;
+}
+
+export type DhammapadaMode = "withImage" | "quoteOnly";
+/** learning = học thuộc theo ngày; random = mỗi lần hiện 1 kệ ngẫu nhiên */
+export type DhammapadaPlayMode = "learning" | "random";
+
 export interface AppConfig {
   imageDir: string;
   visibleSecs: number;
@@ -67,6 +79,16 @@ export interface AppConfig {
   musicTracks: MusicTrack[];
   activeMusicId: string | null;
   overlayMonitorId: string | null;
+  scheduleEnabled: boolean;
+  scheduleSlots: ScheduleSlot[];
+  dhammapadaEnabled: boolean;
+  dhammapadaMode: DhammapadaMode;
+  dhammapadaPlayMode: DhammapadaPlayMode;
+  dhammapadaDailyQuota: number;
+  dhammapadaFontScale: number;
+  dhammapadaMemorizedIds: number[];
+  dhammapadaLearningDate: string | null;
+  dhammapadaTodayQueue: number[];
 }
 
 export interface MonitorInfo {
@@ -153,6 +175,14 @@ export const VISIBLE_OPTIONS = [
 ];
 
 export const HIDDEN_OPTIONS = [
+  { label: "10 giây (test)", value: 10 },
+  { label: "30 giây", value: 30 },
+  { label: "1 phút", value: 60 },
+  { label: "5 phút", value: 300 },
+  { label: "30 phút", value: 1800 },
+];
+
+export const SCHEDULE_DURATION_OPTIONS = [
   { label: "10 giây (test)", value: 10 },
   { label: "30 giây", value: 30 },
   { label: "1 phút", value: 60 },

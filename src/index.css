@@ -361,3 +361,527 @@ html.overlay-root #root {
   outline: 2px solid #fcd34d;
   outline-offset: 1px;
 }
+
+/* —— Kinh Pháp Cú overlay card —— */
+.dhamma-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.dhamma-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at center, rgb(28 22 14 / 0.15) 0%, rgb(12 10 8 / 0.55) 70%, rgb(8 6 4 / 0.72) 100%);
+  pointer-events: none;
+}
+
+.dhamma-card {
+  position: relative;
+  z-index: 1;
+  width: min(34rem, 92vw);
+  padding: 1.75rem 1.85rem 1.35rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgb(251 191 36 / 0.35);
+  background: linear-gradient(
+    165deg,
+    rgb(255 251 235 / 0.94) 0%,
+    rgb(254 243 199 / 0.9) 45%,
+    rgb(255 247 237 / 0.92) 100%
+  );
+  box-shadow:
+    0 25px 50px -12px rgb(0 0 0 / 0.45),
+    0 0 0 1px rgb(255 255 255 / 0.2) inset;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #1c1917;
+  text-align: left;
+}
+
+.dhamma-card.dhamma-card-with-image {
+  width: min(56rem, 96vw);
+}
+
+.dhamma-card-main {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.dhamma-card-main-text-only {
+  display: block;
+}
+
+.dhamma-card-text-col {
+  flex: 1 1 55%;
+  min-width: 0;
+}
+
+.dhamma-card-image-col {
+  flex: 0 1 42%;
+  max-width: 220px;
+  margin-left: auto;
+}
+
+.dhamma-verse-illustration {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(253 230 138 / 0.8);
+  background: rgb(255 255 255 / 0.55);
+}
+
+.dhamma-verse-illustration-loading {
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #a8a29e;
+  border-radius: 0.75rem;
+  border: 1px dashed rgb(253 230 138 / 0.8);
+  background: rgb(255 255 255 / 0.4);
+}
+
+.dhamma-card-enter {
+  animation: dhammaCardIn ease-out both;
+}
+
+.dhamma-card-exit {
+  animation: dhammaCardOut ease-in both;
+}
+
+@keyframes dhammaCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dhammaCardOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+}
+
+.dhamma-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.15rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #92400e;
+}
+
+.dhamma-card-chapter {
+  font-weight: 600;
+  text-align: left;
+}
+
+.dhamma-card-verse-no {
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.dhamma-card-body {
+  margin: 0 0 0.25rem;
+  max-width: none;
+  text-align: left;
+}
+
+.dhamma-line {
+  margin: 0;
+  font-family: "Noto Serif", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: calc(1.28rem * var(--dhamma-font-scale, 1));
+  line-height: 1.75;
+  font-weight: 500;
+  color: #1c1917;
+  letter-spacing: 0.01em;
+}
+
+.dhamma-line + .dhamma-line {
+  margin-top: 0.15rem;
+}
+
+.dhamma-card-progress {
+  margin-bottom: 1.1rem;
+}
+
+.dhamma-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-bottom: 0.55rem;
+}
+
+.dhamma-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #d6d3d1;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.dhamma-dot-done {
+  background: #d97706;
+}
+
+.dhamma-dot-current {
+  background: #b45309;
+  transform: scale(1.25);
+  box-shadow: 0 0 0 3px rgb(217 119 6 / 0.25);
+}
+
+.dhamma-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  font-size: 0.7rem;
+  color: #78716c;
+}
+
+.dhamma-progress-bar-wrap {
+  width: 5.5rem;
+  height: 0.28rem;
+  border-radius: 999px;
+  background: #e7e5e4;
+  overflow: hidden;
+}
+
+.dhamma-progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #d97706, #b45309);
+}
+
+.dhamma-card-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.dhamma-btn {
+  border-radius: 0.75rem;
+  padding: 0.55rem 1.15rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.dhamma-btn:active {
+  transform: scale(0.98);
+}
+
+.dhamma-btn-primary {
+  border: 1px solid #b45309;
+  background: #d97706;
+  color: #fffbeb;
+}
+
+.dhamma-btn-primary:hover {
+  background: #b45309;
+}
+
+.dhamma-btn-ghost {
+  border: 1px solid #d6d3d1;
+  background: rgb(255 255 255 / 0.55);
+  color: #57534e;
+}
+
+.dhamma-btn-ghost:hover {
+  background: #fff;
+  border-color: #a8a29e;
+}
+
+.dhamma-card-source {
+  margin-top: 1rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  color: #a8a29e;
+}
+
+.dhamma-card-done {
+  padding-top: 2.25rem;
+  padding-bottom: 1.75rem;
+  text-align: center;
+  width: min(34rem, 92vw);
+}
+
+.dhamma-done-eyebrow {
+  margin: 0 0 0.5rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #92400e;
+}
+
+.dhamma-done-title {
+  margin: 0 0 0.65rem;
+  font-family: "Noto Serif", Georgia, serif;
+  font-size: 1.55rem;
+  font-weight: 600;
+  color: #1c1917;
+}
+
+.dhamma-done-body {
+  margin: 0 auto 0.85rem;
+  max-width: 22rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: #57534e;
+}
+
+.dhamma-done-stats {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #b45309;
+}
+
+.dhamma-preview-card {
+  margin-top: 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid #fcd34d;
+  background: linear-gradient(165deg, #fffbeb, #fef3c7);
+  padding: 0.75rem 0.85rem;
+  text-align: center;
+}
+
+.dhamma-preview-card p {
+  margin: 0;
+  font-family: Georgia, "Noto Serif", serif;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: #1c1917;
+}
+
+.dhamma-preview-card p + p {
+  margin-top: 0.1rem;
+}
+
+.dhamma-preview-meta {
+  margin-top: 0.45rem !important;
+  font-family: inherit !important;
+  font-size: 0.65rem !important;
+  color: #92400e !important;
+}
+
+/* —— Tab Kinh Pháp Cú —— */
+.dhamma-tab-layout {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.85rem;
+  overflow: hidden;
+}
+
+.dhamma-tab-main {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(0, 1.2fr) minmax(240px, 0.85fr);
+  gap: 1rem;
+  overflow: hidden;
+}
+
+.dhamma-tab-reader {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.dhamma-tab-card {
+  border-radius: 1rem;
+  border: 1px solid #fcd34d;
+  background: linear-gradient(165deg, #fffbeb 0%, #fef3c7 55%, #fde68a 120%);
+  padding: 1.25rem 1.35rem 1rem;
+  box-shadow: 0 8px 28px rgb(180 83 9 / 0.08);
+  text-align: left;
+}
+
+.dhamma-tab-card .dhamma-card-image-col {
+  max-width: 180px;
+}
+
+.dhamma-tab-card .dhamma-verse-illustration {
+  max-height: 200px;
+}
+
+.dhamma-tab-done {
+  border-radius: 1rem;
+  border: 1px solid #fcd34d;
+  background: linear-gradient(165deg, #fffbeb, #fef3c7);
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+
+.dhamma-chapter-list {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 0.85rem;
+  border: 1px solid #e7e5e4;
+  background: rgb(255 255 255 / 0.72);
+  padding: 0.75rem 0.65rem 0.65rem;
+}
+
+.dhamma-chapter-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+
+.dhamma-chapter-block + .dhamma-chapter-block {
+  margin-top: 0.2rem;
+}
+
+.dhamma-chapter-btn {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: transparent;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #44403c;
+  cursor: pointer;
+}
+
+.dhamma-chapter-btn:hover {
+  background: #f5f5f4;
+}
+
+.dhamma-chapter-btn-open {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.dhamma-verse-list {
+  margin: 0.15rem 0 0.35rem;
+  list-style: none;
+  padding: 0 0 0 0.35rem;
+}
+
+.dhamma-verse-item {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 1rem auto 1fr;
+  align-items: center;
+  gap: 0.35rem;
+  border: none;
+  border-radius: 0.4rem;
+  background: transparent;
+  padding: 0.3rem 0.4rem;
+  text-align: left;
+  font-size: 0.72rem;
+  color: #57534e;
+  cursor: pointer;
+}
+
+.dhamma-verse-item:hover {
+  background: #fafaf9;
+}
+
+.dhamma-verse-item-active {
+  background: #fef3c7;
+  color: #78350f;
+  font-weight: 600;
+}
+
+.dhamma-verse-memorized {
+  color: #a8a29e;
+}
+
+.dhamma-verse-memorized .dhamma-verse-snippet {
+  text-decoration: line-through;
+  text-decoration-color: #d6d3d1;
+}
+
+.dhamma-verse-check {
+  width: 0.85rem;
+  font-size: 0.65rem;
+  color: #b45309;
+  text-align: center;
+}
+
+.dhamma-verse-snippet {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #a8a29e;
+}
+
+.dhamma-random-meta {
+  justify-content: center;
+  margin-top: 0.85rem;
+  font-size: 0.75rem;
+  color: #92400e;
+}
+
+@media (max-width: 640px) {
+  .dhamma-card.dhamma-card-with-image {
+    width: min(34rem, 96vw);
+  }
+
+  .dhamma-card-main {
+    flex-direction: column;
+  }
+
+  .dhamma-card-image-col {
+    max-width: 100%;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .dhamma-verse-illustration {
+    max-height: 220px;
+    margin: 0 auto;
+  }
+
+  .dhamma-tab-card .dhamma-card-image-col {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 860px) {
+  .dhamma-tab-main {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .dhamma-chapter-list {
+    max-height: 280px;
+  }
+}
+

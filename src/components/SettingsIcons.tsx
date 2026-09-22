@@ -34,6 +34,25 @@ export function IconSound() {
   );
 }
 
+export function IconSchedule() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconDhamma() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 19.5V6a2 2 0 012-2h8a2 2 0 012 2v13.5" strokeLinecap="round" />
+      <path d="M8 6h6M8 10h6M8 14h4" strokeLinecap="round" />
+      <path d="M16 4v16l4-2V6l-4-2z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function IconGallery() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -16,9 +16,11 @@ import CycleDurationInput from "./CycleDurationInput";
 import DharmaSpinner from "./DharmaSpinner";
 import SettingsSectionCard from "./SettingsSectionCard";
 import ToggleSwitch from "./ToggleSwitch";
-import { IconEffects, IconLotus, IconMonitor, IconPosition, IconSound } from "./SettingsIcons";
+import ScheduleSlotsEditor from "./ScheduleSlotsEditor";
+import DhammapadaTab from "./DhammapadaTab";
+import { IconEffects, IconLotus, IconMonitor, IconPosition, IconSchedule, IconSound } from "./SettingsIcons";
 
-type SettingsTab = "settings" | "gallery";
+type SettingsTab = "settings" | "dhammapada" | "gallery";
 
 function normalizeConfig(cfg: AppConfig): AppConfig {
   return {
@@ -28,6 +30,16 @@ function normalizeConfig(cfg: AppConfig): AppConfig {
     musicTracks: cfg.musicTracks ?? [],
     activeMusicId: cfg.activeMusicId ?? null,
     overlayMonitorId: cfg.overlayMonitorId ?? null,
+    scheduleEnabled: cfg.scheduleEnabled ?? false,
+    scheduleSlots: cfg.scheduleSlots ?? [],
+    dhammapadaEnabled: cfg.dhammapadaEnabled ?? false,
+    dhammapadaMode: cfg.dhammapadaMode ?? "withImage",
+    dhammapadaPlayMode: cfg.dhammapadaPlayMode ?? "learning",
+    dhammapadaDailyQuota: cfg.dhammapadaDailyQuota ?? 3,
+    dhammapadaFontScale: cfg.dhammapadaFontScale ?? 1,
+    dhammapadaMemorizedIds: cfg.dhammapadaMemorizedIds ?? [],
+    dhammapadaLearningDate: cfg.dhammapadaLearningDate ?? null,
+    dhammapadaTodayQueue: cfg.dhammapadaTodayQueue ?? [],
   };
 }
 
@@ -90,6 +102,9 @@ export default function TraySettings() {
                 ...prev,
                 musicTracks: cfg.musicTracks,
                 activeMusicId: cfg.activeMusicId,
+                dhammapadaMemorizedIds: cfg.dhammapadaMemorizedIds,
+                dhammapadaLearningDate: cfg.dhammapadaLearningDate,
+                dhammapadaTodayQueue: cfg.dhammapadaTodayQueue,
               }
             : prev,
         );
@@ -185,6 +200,13 @@ export default function TraySettings() {
           </button>
           <button
             type="button"
+            onClick={() => setActiveTab("dhammapada")}
+            className={`settings-tab ${activeTab === "dhammapada" ? "settings-tab-active" : ""}`}
+          >
+            Kinh Pháp Cú
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab("gallery")}
             className={`settings-tab ${activeTab === "gallery" ? "settings-tab-active" : ""}`}
           >
@@ -253,6 +275,15 @@ export default function TraySettings() {
               </div>
             </SettingsSectionCard>
 
+            <SettingsSectionCard icon={<IconSchedule />} title="Hẹn giờ hiển thị">
+              <ScheduleSlotsEditor
+                enabled={draftConfig.scheduleEnabled}
+                slots={draftConfig.scheduleSlots}
+                onEnabledChange={(scheduleEnabled) => updateDraft({ scheduleEnabled })}
+                onSlotsChange={(scheduleSlots) => updateDraft({ scheduleSlots })}
+              />
+            </SettingsSectionCard>
+
             <SettingsSectionCard icon={<IconSound />} title="Âm thanh">
               <MusicLibrary
                 config={draftConfig}
@@ -270,6 +301,18 @@ export default function TraySettings() {
           <aside className="sticky top-0 min-w-0 self-start">
             <SettingsPreview config={draftConfig} previewImage={previewImage} />
           </aside>
+        </main>
+      ) : activeTab === "dhammapada" ? (
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-4">
+          <DhammapadaTab
+            config={draftConfig}
+            disabled={busy}
+            onUpdate={updateDraft}
+            onStatus={setStatus}
+          />
+          {status && (
+            <p className="mt-3 shrink-0 rounded-lg bg-amber-100 px-3 py-2 text-sm text-amber-900">{status}</p>
+          )}
         </main>
       ) : (
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-4">

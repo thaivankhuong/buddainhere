@@ -172,6 +172,25 @@ pub struct MusicTrack {
 
 
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+
+#[serde(rename_all = "camelCase")]
+
+pub struct ScheduleSlot {
+
+    pub id: String,
+
+    pub enabled: bool,
+
+    /// "HH:MM" 24h, e.g. "08:00"
+    pub time: String,
+
+    pub duration_secs: u64,
+
+}
+
+
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 #[serde(rename_all = "camelCase")]
@@ -246,6 +265,46 @@ pub struct AppConfig {
 
     pub overlay_monitor_id: Option<String>,
 
+    #[serde(default = "default_schedule_enabled")]
+
+    pub schedule_enabled: bool,
+
+    #[serde(default)]
+
+    pub schedule_slots: Vec<ScheduleSlot>,
+
+    #[serde(default = "default_dhammapada_enabled")]
+
+    pub dhammapada_enabled: bool,
+
+    #[serde(default = "default_dhammapada_mode")]
+
+    pub dhammapada_mode: String,
+
+    #[serde(default = "default_dhammapada_play_mode")]
+
+    pub dhammapada_play_mode: String,
+
+    #[serde(default = "default_dhammapada_daily_quota")]
+
+    pub dhammapada_daily_quota: u32,
+
+    #[serde(default = "default_dhammapada_font_scale")]
+
+    pub dhammapada_font_scale: f64,
+
+    #[serde(default)]
+
+    pub dhammapada_memorized_ids: Vec<u32>,
+
+    #[serde(default)]
+
+    pub dhammapada_learning_date: Option<String>,
+
+    #[serde(default)]
+
+    pub dhammapada_today_queue: Vec<u32>,
+
 }
 
 
@@ -285,6 +344,54 @@ fn default_overlay_enabled() -> bool {
 fn default_music_volume() -> f64 {
 
     0.5
+
+}
+
+
+
+fn default_schedule_enabled() -> bool {
+
+    false
+
+}
+
+
+
+fn default_dhammapada_enabled() -> bool {
+
+    false
+
+}
+
+
+
+fn default_dhammapada_mode() -> String {
+
+    "withImage".to_string()
+
+}
+
+
+
+fn default_dhammapada_play_mode() -> String {
+
+    "learning".to_string()
+
+}
+
+
+
+fn default_dhammapada_daily_quota() -> u32 {
+
+    3
+
+}
+
+
+
+fn default_dhammapada_font_scale() -> f64 {
+
+    1.0
 
 }
 
@@ -401,6 +508,26 @@ impl Default for AppConfig {
             active_music_id: None,
 
             overlay_monitor_id: None,
+
+            schedule_enabled: default_schedule_enabled(),
+
+            schedule_slots: Vec::new(),
+
+            dhammapada_enabled: default_dhammapada_enabled(),
+
+            dhammapada_mode: default_dhammapada_mode(),
+
+            dhammapada_play_mode: default_dhammapada_play_mode(),
+
+            dhammapada_daily_quota: default_dhammapada_daily_quota(),
+
+            dhammapada_font_scale: default_dhammapada_font_scale(),
+
+            dhammapada_memorized_ids: Vec::new(),
+
+            dhammapada_learning_date: None,
+
+            dhammapada_today_queue: Vec::new(),
 
         }
 

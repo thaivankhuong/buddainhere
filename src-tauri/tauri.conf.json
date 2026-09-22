@@ -58,7 +58,8 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../image/*": "images/"
+      "../image/*": "images/",
+      "../Data/kinhphapcu/images/*.png": "kinhphapcu/images/"
     }
   }
 }
