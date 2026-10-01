@@ -1,4 +1,5 @@
 use rand::seq::SliceRandom;
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -200,6 +201,21 @@ pub fn filter_selected(all_images: &[String], selected: &[String]) -> Vec<String
 
     filtered.sort();
     filtered
+}
+
+pub fn filter_by_group(
+    images: &[String],
+    assignments: &HashMap<String, String>,
+    group_id: Option<&str>,
+) -> Vec<String> {
+    match group_id {
+        None => images.to_vec(),
+        Some(gid) => images
+            .iter()
+            .filter(|path| assignments.get(*path).map(String::as_str) == Some(gid))
+            .cloned()
+            .collect(),
+    }
 }
 
 pub fn pick_next(images: &[String], index: &mut usize, random: bool) -> Option<String> {

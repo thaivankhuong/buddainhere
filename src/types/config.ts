@@ -76,6 +76,9 @@ export interface AppConfig {
   musicVolume: number;
   imageGroups: ImageGroup[];
   imageGroupAssignments: Record<string, string>;
+  /** null = overlay xoay ảnh của mọi nhóm */
+  activeImageGroupId: string | null;
+  niemphatanvuiSeededVersion: number;
   musicTracks: MusicTrack[];
   activeMusicId: string | null;
   overlayMonitorId: string | null;
@@ -89,7 +92,14 @@ export interface AppConfig {
   dhammapadaMemorizedIds: number[];
   dhammapadaLearningDate: string | null;
   dhammapadaTodayQueue: number[];
+  /** Chuỗi phím tắt toàn cục dạng Tauri, ví dụ "Control+Shift+KeyP"; null = tắt */
+  hotkeyPause: string | null;
+  hotkeyResume: string | null;
+  hotkeyNextImage: string | null;
+  hotkeyToggleOverlay: string | null;
 }
+
+export type HotkeyField = "hotkeyPause" | "hotkeyResume" | "hotkeyNextImage" | "hotkeyToggleOverlay";
 
 export interface MonitorInfo {
   id: string;

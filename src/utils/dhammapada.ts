@@ -62,6 +62,11 @@ export function activeTodayQueue(cfg: AppConfig): number[] {
   return (cfg.dhammapadaTodayQueue ?? []).filter((id) => !done.has(id));
 }
 
+/** Full today's queue in original order (including already-memorized). */
+export function todayQueueOrdered(cfg: AppConfig): number[] {
+  return cfg.dhammapadaTodayQueue ?? [];
+}
+
 /** Roll a new daily queue when the calendar day changes. */
 export function ensureTodayQueue(cfg: AppConfig, now: Date = new Date()): AppConfig {
   const today = todayDateString(now);
@@ -97,6 +102,76 @@ export function nextVerseInQueue(
   const idx = queue.indexOf(afterId);
   const nextId = idx === -1 ? queue[0] : queue[(idx + 1) % queue.length];
   return getVerse(nextId) ?? null;
+}
+
+/** Previous verse in today's full queue (circular, includes memorized). */
+export function prevVerseInQueue(
+  cfg: AppConfig,
+  currentId: number,
+): DhammapadaVerse | null {
+  const queue = todayQueueOrdered(ensureTodayQueue(cfg));
+  if (queue.length === 0) return null;
+  const idx = queue.indexOf(currentId);
+  const prevId = idx <= 0 ? queue[queue.length - 1] : queue[idx - 1];
+  return getVerse(prevId) ?? null;
+}
+
+/** Next verse in today's full queue (circular, includes memorized). */
+export function nextVerseInTodayQueue(
+  cfg: AppConfig,
+  currentId: number,
+): DhammapadaVerse | null {
+  const queue = todayQueueOrdered(ensureTodayQueue(cfg));
+  if (queue.length === 0) return null;
+  const idx = queue.indexOf(currentId);
+  const nextId = idx === -1 ? queue[0] : queue[(idx + 1) % queue.length];
+  return getVerse(nextId) ?? null;
+}
+
+/**
+ * Next verse for overlay/tab learning — prefer today's remaining goal,
+ * then continue with the next unmemorized verse beyond today's quota.
+ */
+export function nextLearningVerse(
+  cfg: AppConfig,
+  afterId: number | null = null,
+): DhammapadaVerse | null {
+  const fromToday = nextVerseInQueue(cfg, afterId);
+  if (fromToday) return fromToday;
+
+  const unmem = unmemorizedIds(cfg);
+  if (unmem.length === 0) return null;
+  if (afterId == null) return getVerse(unmem[0]) ?? null;
+
+  const idx = unmem.indexOf(afterId);
+  const nextId = idx === -1 ? unmem[0] : unmem[(idx + 1) % unmem.length];
+  return getVerse(nextId) ?? null;
+}
+
+/** First verse to show when starting a learning session. */
+export function firstLearningVerse(cfg: AppConfig): DhammapadaVerse | null {
+  return nextLearningVerse(cfg, null);
+}
+
+/** Previous verse in the continuous learning path (circular over unmemorized). */
+export function prevLearningVerse(
+  cfg: AppConfig,
+  currentId: number,
+): DhammapadaVerse | null {
+  const today = todayQueueOrdered(ensureTodayQueue(cfg));
+  if (today.includes(currentId) && today.length > 0) {
+    return prevVerseInQueue(cfg, currentId);
+  }
+  const unmem = unmemorizedIds(cfg);
+  if (unmem.length === 0) return null;
+  const idx = unmem.indexOf(currentId);
+  const prevId = idx <= 0 ? unmem[unmem.length - 1] : unmem[idx - 1];
+  return getVerse(prevId) ?? null;
+}
+
+/** Whether a verse belongs to today's goal queue (including already memorized). */
+export function isInTodayGoal(cfg: AppConfig, verseId: number): boolean {
+  return todayQueueOrdered(cfg).includes(verseId);
 }
 
 /** Pick a random verse from the full collection (for overlay random mode). */

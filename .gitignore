@@ -26,5 +26,10 @@ dist-ssr
 # Rust / Tauri
 src-tauri/target/
 
+# Ảnh Niệm Phật An Vui tải bằng npm run download:niemphatanvui (giữ manifest.json)
+Data/niemphatanvui/
+Data/niemphatanvui-app/**/*.jpg
+Data/niemphatanvui-app/**/*.part
+
 # Cursor local
 .cursor/

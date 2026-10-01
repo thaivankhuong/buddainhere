@@ -27,10 +27,10 @@ pub fn verse_image_path(dir: &Path, image_id: u32) -> PathBuf {
     dir.join(format!("{image_id:03}.png"))
 }
 
-pub fn load_verse_image_display_data_url(
+fn resolve_verse_image_display_path(
     app: &AppHandle,
     image_id: u32,
-) -> Result<Option<String>, String> {
+) -> Result<Option<PathBuf>, String> {
     if image_id == 0 || image_id > 423 {
         return Ok(None);
     }
@@ -41,7 +41,32 @@ pub fn load_verse_image_display_data_url(
         return Ok(None);
     }
 
-    let display_path = crate::thumbnail::ensure_display_image(&source)?;
+    Ok(Some(crate::thumbnail::ensure_display_image(&source)?))
+}
+
+pub fn load_verse_image_display_path(
+    app: &AppHandle,
+    image_id: u32,
+) -> Result<Option<String>, String> {
+    let display_path = match resolve_verse_image_display_path(app, image_id)? {
+        Some(path) => path,
+        None => return Ok(None),
+    };
+    display_path
+        .to_str()
+        .map(String::from)
+        .ok_or_else(|| "Đường dẫn ảnh Pháp Cú không hợp lệ".to_string())
+        .map(Some)
+}
+
+pub fn load_verse_image_display_data_url(
+    app: &AppHandle,
+    image_id: u32,
+) -> Result<Option<String>, String> {
+    let display_path = match resolve_verse_image_display_path(app, image_id)? {
+        Some(path) => path,
+        None => return Ok(None),
+    };
     let display_str = display_path
         .to_str()
         .ok_or_else(|| "Đường dẫn ảnh Pháp Cú không hợp lệ".to_string())?;

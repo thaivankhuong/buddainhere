@@ -2,11 +2,16 @@ mod config;
 
 mod dhammapada_image;
 
+#[cfg(desktop)]
+mod hotkey_manager;
+
 mod image_data;
 
 mod image_manager;
 
 mod monitor;
+
+mod niemphatanvui_seed;
 
 mod thumbnail;
 
@@ -133,11 +138,24 @@ fn pick_next_image(state: &AppState) -> Result<String, String> {
     config::ensure_image_dir(PathBuf::from(&config.image_dir).as_path())?;
 
     let all_images = state.gallery_images(&config.image_dir)?;
-    let images = image_manager::filter_selected(&all_images, &config.selected_images);
-
-
+    let active_group = config.active_image_group_id.as_deref();
+    let group_images = image_manager::filter_by_group(
+        &all_images,
+        &config.image_group_assignments,
+        active_group,
+    );
+    let images = image_manager::filter_selected(&group_images, &config.selected_images);
 
     if images.is_empty() {
+        if let Some(gid) = active_group {
+            let name = config
+                .image_groups
+                .iter()
+                .find(|g| g.id == gid)
+                .map(|g| g.name.as_str())
+                .unwrap_or(gid);
+            return Err(format!("Nhóm \"{name}\" chưa có ảnh nào để hiển thị"));
+        }
 
         return Err(format!(
 
@@ -178,16 +196,56 @@ fn emit_config_changed(app: &AppHandle, config: &AppConfig) {
 
 
 
+fn seed_niemphatanvui_images(app: &AppHandle) {
+    let state = app.state::<AppState>();
+    let seeded_version = state.config.lock().unwrap().niemphatanvui_seeded_version;
+
+    let result = match niemphatanvui_seed::import_pending(app, &gallery_dir(), seeded_version) {
+        Ok(Some(result)) => result,
+        Ok(None) => return,
+        Err(err) => {
+            eprintln!("Seed ảnh Niệm Phật An Vui lỗi: {err}");
+            return;
+        }
+    };
+
+    let config = {
+        let mut config = state.config.lock().unwrap();
+        niemphatanvui_seed::apply(&mut config, result);
+        let _ = save_config(&config);
+        config.clone()
+    };
+    state.invalidate_gallery_cache();
+    emit_config_changed(app, &config);
+    let _ = app.emit("gallery-changed", ());
+}
+
 fn emit_overlay_next(app: &AppHandle) {
 
     let _ = app.emit("overlay-next", ());
 
 }
 
+fn set_overlay_enabled(app: &AppHandle, enabled: bool) {
+    let state = app.state::<AppState>();
+    let config = {
+        let mut config = state.config.lock().unwrap();
+        if config.overlay_enabled == enabled {
+            return;
+        }
+        config.overlay_enabled = enabled;
+        let _ = save_config(&config);
+        config.clone()
+    };
+    emit_config_changed(app, &config);
+    if enabled {
+        emit_overlay_next(app);
+    }
+}
 
-
-fn emit_dhammapada_memorize(app: &AppHandle) {
-    let _ = app.emit("dhammapada-memorize-current", ());
+fn toggle_overlay(app: &AppHandle) {
+    let enabled = !app.state::<AppState>().config.lock().unwrap().overlay_enabled;
+    set_overlay_enabled(app, enabled);
 }
 
 
@@ -207,6 +265,16 @@ fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String> {
 fn save_app_config(app: AppHandle, state: State<'_, AppState>, mut config: AppConfig) -> Result<(), String> {
     normalize_config_for_save(&mut config)?;
     config::ensure_image_dir(PathBuf::from(&config.image_dir).as_path())?;
+    #[cfg(desktop)]
+    {
+        let previous = state.config.lock().unwrap().clone();
+        if !hotkey_manager::hotkeys_equal(&previous, &config) {
+            if let Err(err) = hotkey_manager::register_hotkeys(&app, &config) {
+                let _ = hotkey_manager::register_hotkeys(&app, &previous);
+                return Err(err);
+            }
+        }
+    }
     save_config(&config)?;
     *state.config.lock().unwrap() = config.clone();
     state.invalidate_gallery_cache();
@@ -289,6 +357,14 @@ fn next_image_display_data_url(state: State<'_, AppState>) -> Result<String, Str
         .to_str()
         .ok_or_else(|| "Đường dẫn ảnh hiển thị không hợp lệ".to_string())?;
     image_data::to_data_url(display_str)
+}
+
+#[tauri::command]
+fn get_dhammapada_verse_image_display_path(
+    app: AppHandle,
+    image_id: u32,
+) -> Result<Option<String>, String> {
+    dhammapada_image::load_verse_image_display_path(&app, image_id)
 }
 
 #[tauri::command]
@@ -515,14 +591,6 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
 
     let settings_item = MenuItem::with_id(app, "settings", "Cài đặt", true, None::<&str>)?;
 
-    let memorize_item = MenuItem::with_id(
-        app,
-        "dhammapada_memorize",
-        "Đã nhớ kệ đang hiện",
-        true,
-        None::<&str>,
-    )?;
-
     let quit_item = MenuItem::with_id(app, "quit", "Thoát", true, None::<&str>)?;
 
     let separator = PredefinedMenuItem::separator(app)?;
@@ -535,7 +603,6 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
         &[
             &next_item,
             &pause_item,
-            &memorize_item,
             &separator,
             &settings_item,
             &separator2,
@@ -562,24 +629,11 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
 
         .on_menu_event(|app, event| {
 
-            let state = app.state::<AppState>();
-
             match event.id().as_ref() {
 
                 "next" => emit_overlay_next(app),
 
-                "dhammapada_memorize" => emit_dhammapada_memorize(app),
-
-                "pause" => {
-                    let mut config = state.config.lock().unwrap().clone();
-                    config.overlay_enabled = !config.overlay_enabled;
-                    let _ = save_config(&config);
-                    *state.config.lock().unwrap() = config.clone();
-                    emit_config_changed(app, &config);
-                    if config.overlay_enabled {
-                        emit_overlay_next(app);
-                    }
-                }
+                "pause" => toggle_overlay(app),
 
                 "settings" => {
 
@@ -671,6 +725,7 @@ pub fn run() {
 
             next_image_display_data_url,
 
+            get_dhammapada_verse_image_display_path,
             get_dhammapada_verse_image_display_data_url,
 
             get_image_data_url,
@@ -711,6 +766,34 @@ pub fn run() {
 
             build_tray(app.handle())?;
 
+            #[cfg(desktop)]
+            {
+                use tauri_plugin_global_shortcut::ShortcutState;
+
+                app.handle().plugin(
+                    tauri_plugin_global_shortcut::Builder::new()
+                        .with_handler(|app, shortcut, event| {
+                            if event.state != ShortcutState::Pressed {
+                                return;
+                            }
+                            let config = app.state::<AppState>().config.lock().unwrap().clone();
+                            match hotkey_manager::action_for(&config, shortcut) {
+                                Some(hotkey_manager::HotkeyAction::Pause) => set_overlay_enabled(app, false),
+                                Some(hotkey_manager::HotkeyAction::Resume) => set_overlay_enabled(app, true),
+                                Some(hotkey_manager::HotkeyAction::NextImage) => emit_overlay_next(app),
+                                Some(hotkey_manager::HotkeyAction::ToggleOverlay) => toggle_overlay(app),
+                                None => {}
+                            }
+                        })
+                        .build(),
+                )?;
+
+                let config = app.state::<AppState>().config.lock().unwrap().clone();
+                if let Err(err) = hotkey_manager::register_hotkeys(app.handle(), &config) {
+                    eprintln!("Đăng ký phím tắt lỗi: {err}");
+                }
+            }
+
 
 
             if let Ok(icon) = load_app_icon() {
@@ -738,6 +821,9 @@ pub fn run() {
                 let _ = apply_overlay_monitor(app.handle(), monitor_id.as_deref());
 
             }
+
+            let handle = app.handle().clone();
+            std::thread::spawn(move || seed_niemphatanvui_images(&handle));
 
 
 

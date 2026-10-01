@@ -1,5 +1,6 @@
 import type { DhammapadaChapter, DhammapadaVerse } from "../utils/dhammapada";
 import type { DhammapadaPlayMode } from "../types/config";
+import DhammapadaTodayQueue from "./DhammapadaTodayQueue";
 import DhammapadaVerseLayout from "./DhammapadaVerseLayout";
 
 export type DhammapadaCardAction = "memorized" | "skip" | "timeout";
@@ -18,8 +19,16 @@ interface Props {
   playMode?: DhammapadaPlayMode;
   showVerseImage?: boolean;
   verseImageSrc?: string | null;
+  /** Full today's queue (ordered, includes memorized). */
+  queueIds?: number[];
+  doneSet?: Set<number>;
+  /** Whether current verse is part of today's goal. */
+  isTodayGoal?: boolean;
   onMemorized: () => void;
   onSkip: () => void;
+  onSelectVerse?: (id: number) => void;
+  onPrevVerse?: () => void;
+  onNextVerse?: () => void;
 }
 
 export default function DhammapadaCard({
@@ -36,12 +45,22 @@ export default function DhammapadaCard({
   playMode = "learning",
   showVerseImage = false,
   verseImageSrc = null,
+  queueIds = [],
+  doneSet,
+  isTodayGoal = true,
   onMemorized,
   onSkip,
+  onSelectVerse,
+  onPrevVerse,
+  onNextVerse,
 }: Props) {
   const isRandom = playMode === "random";
   const doneToday = Math.max(0, todayTotal - todayLeft);
-  const percent = total === 0 ? 0 : Math.round((memorized / total) * 100);
+  const resolvedDone = doneSet ?? new Set<number>();
+  const queuePhase =
+    doneToday >= todayTotal && todayTotal > 0 && !isTodayGoal
+      ? "continue"
+      : "goal";
   const animClass =
     phase === "entering"
       ? "dhamma-card-enter"
@@ -70,6 +89,24 @@ export default function DhammapadaCard({
           <span className="dhamma-card-verse-no">Kệ {verse.id}/{total}</span>
         </header>
 
+        {!isRandom && queueIds.length > 0 && onSelectVerse && (
+          <DhammapadaTodayQueue
+            queueIds={queueIds}
+            focusId={isTodayGoal ? verse.id : null}
+            doneSet={resolvedDone}
+            onSelect={onSelectVerse}
+            onPrev={onPrevVerse}
+            onNext={onNextVerse}
+            compact
+            phase={queuePhase}
+            continueVerseId={queuePhase === "continue" ? verse.id : null}
+            memorizedToday={doneToday}
+            todayTotal={todayTotal}
+            memorizedTotal={memorized}
+            totalVerses={total}
+          />
+        )}
+
         <DhammapadaVerseLayout
           verse={verse}
           showImage={showVerseImage}
@@ -81,34 +118,14 @@ export default function DhammapadaCard({
             <span>Ngẫu nhiên · {total} kệ</span>
           </div>
         ) : (
-          <>
-            <div className="dhamma-card-progress">
-              <div className="dhamma-dots" aria-label={`Hôm nay ${doneToday}/${todayTotal}`}>
-                {Array.from({ length: Math.max(todayTotal, 1) }).map((_, i) => (
-                  <span
-                    key={i}
-                    className={`dhamma-dot ${i < doneToday ? "dhamma-dot-done" : i === doneToday ? "dhamma-dot-current" : ""}`}
-                  />
-                ))}
-              </div>
-              <div className="dhamma-progress-meta">
-                <span>Hôm nay {doneToday}/{todayTotal}</span>
-                <span className="dhamma-progress-bar-wrap" title={`${percent}% lộ trình`}>
-                  <span className="dhamma-progress-bar" style={{ width: `${percent}%` }} />
-                </span>
-                <span>{memorized}/{total}</span>
-              </div>
-            </div>
-
-            <div className="dhamma-card-actions">
-              <button type="button" className="dhamma-btn dhamma-btn-ghost" onClick={onSkip}>
-                Học lại sau
-              </button>
-              <button type="button" className="dhamma-btn dhamma-btn-primary" onClick={onMemorized}>
-                Đã nhớ
-              </button>
-            </div>
-          </>
+          <div className="dhamma-card-actions">
+            <button type="button" className="dhamma-btn dhamma-btn-ghost" onClick={onSkip}>
+              Học lại sau
+            </button>
+            <button type="button" className="dhamma-btn dhamma-btn-primary" onClick={onMemorized}>
+              Đã nhớ
+            </button>
+          </div>
         )}
 
         <footer className="dhamma-card-source">{source}</footer>

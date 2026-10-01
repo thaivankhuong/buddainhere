@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { resolveVerseImageId } from "../utils/dhammapada";
+import { toAssetUrl } from "../utils/imageAssetUrl";
 
 export function useDhammapadaVerseImage(verseId: number | null) {
   const [src, setSrc] = useState<string | null>(null);
@@ -21,16 +22,36 @@ export function useDhammapadaVerseImage(verseId: number | null) {
     }
 
     let cancelled = false;
+    setSrc(null);
     setLoading(true);
 
-    invoke<string | null>("get_dhammapada_verse_image_display_data_url", {
+    invoke<string | null>("get_dhammapada_verse_image_display_path", {
       imageId,
     })
-      .then((dataUrl) => {
+      .then(async (filePath) => {
+        if (cancelled) return;
+        if (filePath) {
+          setSrc(toAssetUrl(filePath));
+          return;
+        }
+        const dataUrl = await invoke<string | null>(
+          "get_dhammapada_verse_image_display_data_url",
+          { imageId },
+        );
         if (!cancelled) setSrc(dataUrl);
       })
-      .catch(() => {
-        if (!cancelled) setSrc(null);
+      .catch(async (err) => {
+        console.error(`[verse-${imageId}] load failed:`, err);
+        if (cancelled) return;
+        try {
+          const dataUrl = await invoke<string | null>(
+            "get_dhammapada_verse_image_display_data_url",
+            { imageId },
+          );
+          if (!cancelled) setSrc(dataUrl);
+        } catch {
+          if (!cancelled) setSrc(null);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

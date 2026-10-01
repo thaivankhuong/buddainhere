@@ -253,6 +253,13 @@ pub struct AppConfig {
 
     pub image_group_assignments: HashMap<String, String>,
 
+    /// None = overlay xoay ảnh của mọi nhóm
+    #[serde(default)]
+    pub active_image_group_id: Option<String>,
+
+    #[serde(default)]
+    pub niemphatanvui_seeded_version: u32,
+
     #[serde(default)]
 
     pub music_tracks: Vec<MusicTrack>,
@@ -304,6 +311,18 @@ pub struct AppConfig {
     #[serde(default)]
 
     pub dhammapada_today_queue: Vec<u32>,
+
+    #[serde(default)]
+    pub hotkey_pause: Option<String>,
+
+    #[serde(default)]
+    pub hotkey_resume: Option<String>,
+
+    #[serde(default)]
+    pub hotkey_next_image: Option<String>,
+
+    #[serde(default)]
+    pub hotkey_toggle_overlay: Option<String>,
 
 }
 
@@ -502,6 +521,8 @@ impl Default for AppConfig {
             image_groups: Vec::new(),
 
             image_group_assignments: HashMap::new(),
+            active_image_group_id: None,
+            niemphatanvui_seeded_version: 0,
 
             music_tracks: Vec::new(),
 
@@ -528,6 +549,11 @@ impl Default for AppConfig {
             dhammapada_learning_date: None,
 
             dhammapada_today_queue: Vec::new(),
+
+            hotkey_pause: None,
+            hotkey_resume: None,
+            hotkey_next_image: None,
+            hotkey_toggle_overlay: None,
 
         }
 
@@ -586,6 +612,12 @@ fn migrate_config(config: &mut AppConfig) {
             Path::new(path).exists() && config.image_groups.iter().any(|g| g.id == *group_id)
 
         });
+
+    if let Some(active) = &config.active_image_group_id {
+        if !config.image_groups.iter().any(|g| &g.id == active) {
+            config.active_image_group_id = None;
+        }
+    }
 
 }
 

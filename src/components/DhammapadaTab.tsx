@@ -7,16 +7,23 @@ import {
   activeTodayQueue,
   clampFontScale,
   ensureTodayQueue,
+  firstLearningVerse,
   getChapter,
   getVerse,
+  isInTodayGoal,
   markMemorized,
   memorizedSet,
-  nextVerseInQueue,
+  nextLearningVerse,
+  nextVerseInTodayQueue,
+  prevLearningVerse,
+  prevVerseInQueue,
   progressStats,
   randomVerse,
   resetProgress,
+  todayQueueOrdered,
   type DhammapadaVerse,
 } from "../utils/dhammapada";
+import DhammapadaTodayQueue from "./DhammapadaTodayQueue";
 import DhammapadaVerseLayout from "./DhammapadaVerseLayout";
 import SettingsSectionCard from "./SettingsSectionCard";
 import ToggleSwitch from "./ToggleSwitch";
@@ -46,8 +53,11 @@ export default function DhammapadaTab({
   const stats = useMemo(() => progressStats(rolled), [rolled]);
   const done = useMemo(() => memorizedSet(rolled), [rolled]);
   const todayQueue = useMemo(() => activeTodayQueue(rolled), [rolled]);
+  const fullTodayQueue = useMemo(() => todayQueueOrdered(rolled), [rolled]);
+  const todayQueueSet = useMemo(() => new Set(fullTodayQueue), [fullTodayQueue]);
 
   const [focusVerseId, setFocusVerseId] = useState<number | null>(null);
+  const [browseMode, setBrowseMode] = useState(false);
   const [expandedChapter, setExpandedChapter] = useState<number | null>(1);
   const [savingProgress, setSavingProgress] = useState(false);
 
@@ -78,16 +88,33 @@ export default function DhammapadaTab({
       }
       return;
     }
-    if (focusVerseId == null && todayQueue.length > 0) {
-      setFocusVerseId(todayQueue[0]);
+    if (focusVerseId == null) {
+      const v = firstLearningVerse(rolled);
+      if (v) {
+        setFocusVerseId(v.id);
+        setExpandedChapter(v.chapterId);
+        setBrowseMode(false);
+      }
     }
-  }, [todayQueue, focusVerseId, isRandom]);
+  }, [rolled, focusVerseId, isRandom]);
+
+  // When the calendar day rolls and a new queue is created, jump to the first learning verse.
+  const learningDate = rolled.dhammapadaLearningDate;
+  useEffect(() => {
+    if (isRandom) return;
+    const v = firstLearningVerse(rolled);
+    if (!v) return;
+    setFocusVerseId(v.id);
+    setExpandedChapter(v.chapterId);
+    setBrowseMode(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [learningDate, fullTodayQueue.join(",")]);
 
   const displayVerse: DhammapadaVerse | null = useMemo(() => {
     if (focusVerseId != null) {
       return getVerse(focusVerseId) ?? null;
     }
-    return nextVerseInQueue(rolled);
+    return firstLearningVerse(rolled);
   }, [focusVerseId, rolled]);
 
   const displayChapter = displayVerse
@@ -97,6 +124,20 @@ export default function DhammapadaTab({
   const showVerseImage = mode === "withImage";
   const { src: verseImageSrc, loading: verseImageLoading } =
     useDhammapadaVerseImage(showVerseImage ? (displayVerse?.id ?? null) : null);
+
+  const inTodayGoal =
+    displayVerse != null && isInTodayGoal(rolled, displayVerse.id);
+  const dayComplete =
+    stats.dayComplete || (todayQueue.length === 0 && stats.memorized > 0);
+  const journeyComplete = stats.complete;
+  const isBrowsing =
+    !isRandom && browseMode && displayVerse != null && !inTodayGoal;
+  const isContinuing =
+    !isRandom &&
+    !isBrowsing &&
+    dayComplete &&
+    displayVerse != null &&
+    !inTodayGoal;
 
   const saveProgressNow = useCallback(
     async (
@@ -134,33 +175,89 @@ export default function DhammapadaTab({
   );
 
   async function handleMemorized() {
-    if (!displayVerse || disabled || savingProgress) return;
+    if (!displayVerse || disabled || savingProgress || isBrowsing) return;
     const base = ensureTodayQueue(config);
     const next = markMemorized(base, displayVerse.id);
     const remaining = activeTodayQueue(next);
+    const continueVerse = firstLearningVerse(next);
     await saveProgressNow(
       {
         dhammapadaMemorizedIds: next.dhammapadaMemorizedIds,
         dhammapadaLearningDate: next.dhammapadaLearningDate,
         dhammapadaTodayQueue: next.dhammapadaTodayQueue,
       },
-      remaining.length === 0
-        ? progressStats(next).complete
-          ? "Đã thuộc đủ 423 kệ — lộ trình hoàn thành."
-          : "Hôm nay đã thuộc đủ. Mai tiếp tục."
-        : `Đã nhớ kệ ${displayVerse.id}.`,
+      progressStats(next).complete
+        ? "Đã thuộc đủ 423 kệ — lộ trình hoàn thành."
+        : remaining.length === 0 && continueVerse
+          ? `Mục tiêu hôm nay xong — tiếp tục kệ ${continueVerse.id}.`
+          : remaining.length === 0
+            ? "Hôm nay đã thuộc đủ mục tiêu."
+            : `Đã nhớ kệ ${displayVerse.id}.`,
     );
-    if (remaining.length > 0) {
-      setFocusVerseId(remaining[0]);
+    setBrowseMode(false);
+    if (continueVerse) {
+      setFocusVerseId(continueVerse.id);
+      setExpandedChapter(continueVerse.chapterId);
     } else {
       setFocusVerseId(null);
     }
   }
 
   function handleSkip() {
-    if (!displayVerse) return;
-    const next = nextVerseInQueue(rolled, displayVerse.id);
-    if (next) setFocusVerseId(next.id);
+    if (!displayVerse || isBrowsing) return;
+    const next = nextLearningVerse(rolled, displayVerse.id);
+    if (next) {
+      setBrowseMode(false);
+      setFocusVerseId(next.id);
+      setExpandedChapter(next.chapterId);
+    }
+  }
+
+  function handleQueuePrev() {
+    if (focusVerseId == null) return;
+    const prev = inTodayGoal
+      ? prevVerseInQueue(rolled, focusVerseId)
+      : prevLearningVerse(rolled, focusVerseId);
+    if (prev) {
+      setBrowseMode(false);
+      setFocusVerseId(prev.id);
+      setExpandedChapter(prev.chapterId);
+    }
+  }
+
+  function handleQueueNext() {
+    if (focusVerseId == null) return;
+    const next = inTodayGoal
+      ? nextVerseInTodayQueue(rolled, focusVerseId)
+      : nextLearningVerse(rolled, focusVerseId);
+    if (next) {
+      setBrowseMode(false);
+      setFocusVerseId(next.id);
+      setExpandedChapter(next.chapterId);
+    }
+  }
+
+  function handleQueueSelect(id: number) {
+    setBrowseMode(false);
+    setFocusVerseId(id);
+    const v = getVerse(id);
+    if (v) setExpandedChapter(v.chapterId);
+  }
+
+  function handleSidebarSelect(id: number, chapterId: number) {
+    const inGoal = isInTodayGoal(rolled, id);
+    setBrowseMode(!inGoal);
+    setFocusVerseId(id);
+    setExpandedChapter(chapterId);
+  }
+
+  function handleBackToLearning() {
+    const v = firstLearningVerse(rolled);
+    if (v) {
+      setBrowseMode(false);
+      setFocusVerseId(v.id);
+      setExpandedChapter(v.chapterId);
+    }
   }
 
   async function handleReset() {
@@ -207,9 +304,6 @@ export default function DhammapadaTab({
     return map;
   }, []);
 
-  const dayComplete = stats.dayComplete || (todayQueue.length === 0 && stats.memorized > 0);
-  const journeyComplete = stats.complete;
-
   return (
     <div className="dhamma-tab-layout">
       <SettingsSectionCard icon={<IconDhamma />} title="Tiến độ & cài đặt">
@@ -229,7 +323,7 @@ export default function DhammapadaTab({
                 />
               </div>
               <p className="text-[11px] text-stone-600">
-                Hôm nay còn {stats.todayLeft}/{stats.todayTotal} kệ
+                Mục tiêu hôm nay còn {stats.todayLeft}/{stats.todayTotal} kệ
                 {journeyComplete ? " · Đã hoàn thành lộ trình" : ""}
               </p>
             </div>
@@ -349,7 +443,7 @@ export default function DhammapadaTab({
       <div className="dhamma-tab-main">
         <section className="dhamma-tab-reader">
           <h2 className="mb-2 text-sm font-semibold text-amber-900">
-            {isRandom ? "Đọc kệ" : "Học hôm nay"}
+            {isRandom ? "Đọc kệ" : isBrowsing ? "Đang duyệt" : "Học hôm nay"}
           </h2>
 
           {isRandom ? (
@@ -410,92 +504,95 @@ export default function DhammapadaTab({
                 {stats.memorized}/{stats.total} kệ
               </p>
             </div>
-          ) : dayComplete && !displayVerse ? (
-            <div className="dhamma-tab-done">
-              <p className="dhamma-done-eyebrow">Kinh Pháp Cú</p>
-              <h3 className="dhamma-done-title">Hôm nay đã thuộc đủ</h3>
-              <p className="dhamma-done-body">
-                Mai lại tiếp tục những kệ kế tiếp. Bạn vẫn có thể duyệt toàn bộ kinh bên phải.
-              </p>
-              <p className="dhamma-done-stats">
-                {stats.memorized}/{stats.total} kệ
-              </p>
-            </div>
           ) : displayVerse ? (
-            <div
-              className={`dhamma-tab-card ${showVerseImage ? "dhamma-card-with-image" : ""}`}
-              style={{
-                ["--dhamma-font-scale" as string]: String(fontScale),
-              }}
-            >
-              <header className="dhamma-card-header">
-                <span className="dhamma-card-chapter">
-                  {displayChapter
-                    ? `Phẩm ${displayChapter.id} · ${displayChapter.name}`
-                    : `Phẩm ${displayVerse.chapterId}`}
-                </span>
-                <span className="dhamma-card-verse-no">
-                  Kệ {displayVerse.id}/{stats.total}
-                  {done.has(displayVerse.id) ? " · Đã nhớ" : ""}
-                </span>
-              </header>
-
-              <DhammapadaVerseLayout
-                verse={displayVerse}
-                showImage={showVerseImage}
-                verseImageSrc={verseImageSrc}
-                verseImageLoading={verseImageLoading}
-              />
-
-              <div className="dhamma-card-progress">
-                <div
-                  className="dhamma-dots"
-                  aria-label={`Hôm nay ${stats.todayTotal - stats.todayLeft}/${stats.todayTotal}`}
-                >
-                  {Array.from({ length: Math.max(stats.todayTotal, 1) }).map(
-                    (_, i) => {
-                      const doneToday = Math.max(
-                        0,
-                        stats.todayTotal - stats.todayLeft,
-                      );
-                      return (
-                        <span
-                          key={i}
-                          className={`dhamma-dot ${
-                            i < doneToday
-                              ? "dhamma-dot-done"
-                              : i === doneToday
-                                ? "dhamma-dot-current"
-                                : ""
-                          }`}
-                        />
-                      );
-                    },
-                  )}
+            <>
+              {dayComplete && !isBrowsing && (
+                <div className="dhamma-day-goal-banner">
+                  Mục tiêu hôm nay {stats.todayTotal}/{stats.todayTotal} đã nhớ
+                  {isContinuing
+                    ? ` — tiếp tục kệ ${displayVerse.id}`
+                    : " — bạn có thể học tiếp các kệ sau"}
                 </div>
-                <div className="dhamma-progress-meta">
-                  <span>
-                    Hôm nay {Math.max(0, stats.todayTotal - stats.todayLeft)}/
-                    {stats.todayTotal}
+              )}
+              <div
+                key={displayVerse.id}
+                className={`dhamma-tab-card ${showVerseImage ? "dhamma-card-with-image" : ""}`}
+                style={{
+                  ["--dhamma-font-scale" as string]: String(fontScale),
+                }}
+              >
+                <header className="dhamma-card-header">
+                  <span className="dhamma-card-chapter">
+                    {displayChapter
+                      ? `Phẩm ${displayChapter.id} · ${displayChapter.name}`
+                      : `Phẩm ${displayVerse.chapterId}`}
+                    {isBrowsing && (
+                      <span className="dhamma-browse-badge">Đang duyệt</span>
+                    )}
                   </span>
-                  <span>
-                    Tổng {stats.memorized}/{stats.total}
+                  <span className="dhamma-card-verse-no">
+                    Kệ {displayVerse.id}/{stats.total}
+                    {done.has(displayVerse.id) ? " · Đã nhớ" : ""}
                   </span>
-                </div>
-              </div>
+                </header>
 
-              <div className="dhamma-card-actions">
-                {!done.has(displayVerse.id) ? (
-                  <>
-                    <button
-                      type="button"
-                      className="dhamma-btn dhamma-btn-primary"
-                      disabled={disabled || savingProgress}
-                      onClick={() => void handleMemorized()}
-                    >
-                      {savingProgress ? "Đang lưu..." : "Đã nhớ"}
-                    </button>
-                    {todayQueue.includes(displayVerse.id) && todayQueue.length > 1 && (
+                {fullTodayQueue.length > 0 && !isBrowsing && (
+                  <DhammapadaTodayQueue
+                    queueIds={fullTodayQueue}
+                    focusId={inTodayGoal ? focusVerseId : null}
+                    doneSet={done}
+                    onSelect={handleQueueSelect}
+                    onPrev={handleQueuePrev}
+                    onNext={handleQueueNext}
+                    disabled={disabled}
+                    phase={isContinuing ? "continue" : "goal"}
+                    continueVerseId={isContinuing ? displayVerse.id : null}
+                    memorizedToday={Math.max(0, stats.todayTotal - stats.todayLeft)}
+                    todayTotal={stats.todayTotal}
+                    memorizedTotal={stats.memorized}
+                    totalVerses={stats.total}
+                  />
+                )}
+
+                <DhammapadaVerseLayout
+                  verse={displayVerse}
+                  showImage={showVerseImage}
+                  verseImageSrc={verseImageSrc}
+                  verseImageLoading={verseImageLoading}
+                />
+
+                <div className="dhamma-card-actions">
+                  {isBrowsing ? (
+                    <>
+                      <button
+                        type="button"
+                        className="dhamma-btn dhamma-btn-primary"
+                        disabled={disabled}
+                        onClick={handleBackToLearning}
+                      >
+                        Quay lại học
+                      </button>
+                      {done.has(displayVerse.id) ? (
+                        <button
+                          type="button"
+                          className="dhamma-btn dhamma-btn-ghost"
+                          disabled={disabled || savingProgress}
+                          onClick={() => void handleUnmemorize(displayVerse.id)}
+                        >
+                          Bỏ đánh dấu đã nhớ
+                        </button>
+                      ) : null}
+                    </>
+                  ) : !done.has(displayVerse.id) ? (
+                    <>
+                      <button
+                        type="button"
+                        className="dhamma-btn dhamma-btn-primary"
+                        disabled={disabled || savingProgress}
+                        onClick={() => void handleMemorized()}
+                      >
+                        {savingProgress ? "Đang lưu..." : "Đã nhớ"}
+                      </button>
                       <button
                         type="button"
                         className="dhamma-btn dhamma-btn-ghost"
@@ -504,22 +601,22 @@ export default function DhammapadaTab({
                       >
                         Học lại sau
                       </button>
-                    )}
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    className="dhamma-btn dhamma-btn-ghost"
-                    disabled={disabled || savingProgress}
-                    onClick={() => void handleUnmemorize(displayVerse.id)}
-                  >
-                    Bỏ đánh dấu đã nhớ
-                  </button>
-                )}
-              </div>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="dhamma-btn dhamma-btn-ghost"
+                      disabled={disabled || savingProgress}
+                      onClick={() => void handleUnmemorize(displayVerse.id)}
+                    >
+                      Bỏ đánh dấu đã nhớ
+                    </button>
+                  )}
+                </div>
 
-              <footer className="dhamma-card-source">{DHAMMAPADA.source}</footer>
-            </div>
+                <footer className="dhamma-card-source">{DHAMMAPADA.source}</footer>
+              </div>
+            </>
           ) : (
             <p className="rounded-lg border border-dashed border-stone-200 px-4 py-8 text-center text-sm text-stone-500">
               Chọn một kệ trong danh sách phẩm để đọc, hoặc bật học trên overlay.
@@ -557,6 +654,7 @@ export default function DhammapadaTab({
                       {verses.map((v) => {
                         const isDone = done.has(v.id);
                         const isActive = focusVerseId === v.id;
+                        const isToday = todayQueueSet.has(v.id);
                         return (
                           <li key={v.id}>
                             <button
@@ -564,15 +662,17 @@ export default function DhammapadaTab({
                               className={`dhamma-verse-item ${
                                 isActive ? "dhamma-verse-item-active" : ""
                               } ${isDone ? "dhamma-verse-memorized" : ""}`}
-                              onClick={() => {
-                                setFocusVerseId(v.id);
-                                setExpandedChapter(ch.id);
-                              }}
+                              onClick={() => handleSidebarSelect(v.id, ch.id)}
                             >
                               <span className="dhamma-verse-check" aria-hidden>
                                 {isDone ? "✓" : ""}
                               </span>
-                              <span>Kệ {v.id}</span>
+                              <span className="dhamma-verse-label">
+                                Kệ {v.id}
+                                {isToday && (
+                                  <span className="dhamma-verse-today">Hôm nay</span>
+                                )}
+                              </span>
                               <span className="dhamma-verse-snippet">
                                 {v.lines[0]?.slice(0, 36) ?? ""}
                                 {(v.lines[0]?.length ?? 0) > 36 ? "…" : ""}

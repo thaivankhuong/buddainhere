@@ -91,6 +91,7 @@ export default function GalleryTab({
     onUpdate({
       imageGroups: config.imageGroups.filter((g) => g.id !== group.id),
       imageGroupAssignments: nextAssignments,
+      ...(config.activeImageGroupId === group.id && { activeImageGroupId: null }),
     });
   }
 
@@ -289,6 +290,22 @@ export default function GalleryTab({
           Import ảnh
         </button>
         <span className="text-xs text-stone-500">{images.length} ảnh trong kho</span>
+        <label className="ml-auto flex items-center gap-2 text-sm text-stone-700">
+          Nhóm hiển thị trên overlay
+          <select
+            value={config.activeImageGroupId ?? ""}
+            onChange={(e) => onUpdate({ activeImageGroupId: e.target.value || null })}
+            disabled={disabled}
+            className="rounded-lg border border-amber-300 bg-white px-2 py-1.5 text-sm"
+          >
+            <option value="">Tất cả nhóm</option>
+            {config.imageGroups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name} ({byGroup[g.id]?.length ?? 0})
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pb-4 pr-1">
@@ -299,6 +316,20 @@ export default function GalleryTab({
           title={group.name}
           extra={
             <div className="flex items-center gap-3">
+              {config.activeImageGroupId === group.id ? (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-900">
+                  Đang hiển thị
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onUpdate({ activeImageGroupId: group.id })}
+                  disabled={disabled || (byGroup[group.id]?.length ?? 0) === 0}
+                  className="text-xs text-amber-800 hover:underline disabled:opacity-50 disabled:no-underline"
+                >
+                  Hiển thị nhóm này
+                </button>
+              )}
               <span className="text-xs text-stone-500">
                 {(byGroup[group.id]?.length ?? 0)} ảnh
               </span>

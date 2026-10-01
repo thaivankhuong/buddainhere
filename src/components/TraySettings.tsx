@@ -18,7 +18,15 @@ import SettingsSectionCard from "./SettingsSectionCard";
 import ToggleSwitch from "./ToggleSwitch";
 import ScheduleSlotsEditor from "./ScheduleSlotsEditor";
 import DhammapadaTab from "./DhammapadaTab";
-import { IconEffects, IconLotus, IconMonitor, IconPosition, IconSchedule, IconSound } from "./SettingsIcons";
+import HotkeySettings from "./HotkeySettings";
+import {
+  IconEffects,
+  IconKeyboard,
+  IconMonitor,
+  IconPosition,
+  IconSchedule,
+  IconSound,
+} from "./SettingsIcons";
 
 type SettingsTab = "settings" | "dhammapada" | "gallery";
 
@@ -27,6 +35,8 @@ function normalizeConfig(cfg: AppConfig): AppConfig {
     ...cfg,
     imageGroups: cfg.imageGroups ?? [],
     imageGroupAssignments: cfg.imageGroupAssignments ?? {},
+    activeImageGroupId: cfg.activeImageGroupId ?? null,
+    niemphatanvuiSeededVersion: cfg.niemphatanvuiSeededVersion ?? 0,
     musicTracks: cfg.musicTracks ?? [],
     activeMusicId: cfg.activeMusicId ?? null,
     overlayMonitorId: cfg.overlayMonitorId ?? null,
@@ -40,6 +50,10 @@ function normalizeConfig(cfg: AppConfig): AppConfig {
     dhammapadaMemorizedIds: cfg.dhammapadaMemorizedIds ?? [],
     dhammapadaLearningDate: cfg.dhammapadaLearningDate ?? null,
     dhammapadaTodayQueue: cfg.dhammapadaTodayQueue ?? [],
+    hotkeyPause: cfg.hotkeyPause ?? null,
+    hotkeyResume: cfg.hotkeyResume ?? null,
+    hotkeyNextImage: cfg.hotkeyNextImage ?? null,
+    hotkeyToggleOverlay: cfg.hotkeyToggleOverlay ?? null,
   };
 }
 
@@ -105,6 +119,20 @@ export default function TraySettings() {
                 dhammapadaMemorizedIds: cfg.dhammapadaMemorizedIds,
                 dhammapadaLearningDate: cfg.dhammapadaLearningDate,
                 dhammapadaTodayQueue: cfg.dhammapadaTodayQueue,
+                ...(cfg.niemphatanvuiSeededVersion !== prev.niemphatanvuiSeededVersion && {
+                  niemphatanvuiSeededVersion: cfg.niemphatanvuiSeededVersion,
+                  imageGroups: [
+                    ...prev.imageGroups,
+                    ...cfg.imageGroups.filter(
+                      (g) => !prev.imageGroups.some((p) => p.id === g.id),
+                    ),
+                  ],
+                  imageGroupAssignments: {
+                    ...cfg.imageGroupAssignments,
+                    ...prev.imageGroupAssignments,
+                  },
+                  activeImageGroupId: prev.activeImageGroupId ?? cfg.activeImageGroupId,
+                }),
               }
             : prev,
         );
@@ -116,9 +144,20 @@ export default function TraySettings() {
       })
       .catch(() => undefined);
 
+    let cleanupGallery: (() => void) | undefined;
+    listen("gallery-changed", () => {
+      if (!disposed) loadImages().catch(() => undefined);
+    })
+      .then((fn) => {
+        if (disposed) fn();
+        else cleanupGallery = fn;
+      })
+      .catch(() => undefined);
+
     return () => {
       disposed = true;
       cleanup?.();
+      cleanupGallery?.();
     };
   }, [loadConfig, loadImages]);
 
@@ -177,9 +216,13 @@ export default function TraySettings() {
       <header className="shrink-0 border-b border-amber-200/60 bg-white/80 px-6 py-4 backdrop-blur-sm">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="text-amber-700">
-              <IconLotus />
-            </span>
+            <img
+              src="/app-logo.png"
+              alt=""
+              className="h-10 w-10 object-contain"
+              width={40}
+              height={40}
+            />
             <div>
               <h1 className="text-lg font-semibold text-amber-900">BuddaInHere</h1>
               <p className="text-xs text-stone-500">Cài đặt widget ảnh Phật trên desktop</p>
@@ -273,6 +316,10 @@ export default function TraySettings() {
                   label="Ngẫu nhiên"
                 />
               </div>
+            </SettingsSectionCard>
+
+            <SettingsSectionCard icon={<IconKeyboard />} title="Phím tắt">
+              <HotkeySettings config={draftConfig} onChange={updateDraft} />
             </SettingsSectionCard>
 
             <SettingsSectionCard icon={<IconSchedule />} title="Hẹn giờ hiển thị">

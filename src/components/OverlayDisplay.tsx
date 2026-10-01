@@ -15,22 +15,37 @@ import {
 import { fireKey, msUntil, nextOccurrence, parseTimeToMinutes } from "../utils/schedule";
 import {
   DHAMMAPADA,
-  activeTodayQueue,
   clampFontScale,
   ensureTodayQueue,
+  firstLearningVerse,
   getChapter,
+  getVerse,
+  isInTodayGoal,
   markMemorized,
-  nextVerseInQueue,
+  memorizedSet,
+  nextLearningVerse,
+  nextVerseInTodayQueue,
+  prevLearningVerse,
+  prevVerseInQueue,
   progressStats,
   randomVerse,
   resolveVerseImageId,
+  todayQueueOrdered,
   type DhammapadaVerse,
 } from "../utils/dhammapada";
+import {
+  resolveGalleryImageSrc,
+  resolveVerseImageSrc,
+} from "../utils/imageAssetUrl";
 
 const overlayWindow = getCurrentWindow();
 
 type Phase = "hidden" | "entering" | "visible" | "exiting";
-type CardAction = "memorized" | "skip" | "timeout";
+type CardAction =
+  | "memorized"
+  | "skip"
+  | "timeout"
+  | { select: number };
 
 async function showOverlayWindow() {
   await overlayWindow.show();
@@ -92,36 +107,6 @@ function waitForAction(
   });
 }
 
-function preloadImage(src: string, signal: AbortSignal) {
-  return new Promise<void>((resolve, reject) => {
-    if (signal.aborted) {
-      reject(new Error("aborted"));
-      return;
-    }
-
-    const img = new Image();
-    const cleanup = () => {
-      signal.removeEventListener("abort", onAbort);
-    };
-    const onAbort = () => {
-      cleanup();
-      reject(new Error("aborted"));
-    };
-
-    img.onload = () => {
-      cleanup();
-      resolve();
-    };
-    img.onerror = () => {
-      cleanup();
-      reject(new Error("Không tải được ảnh hiển thị"));
-    };
-
-    signal.addEventListener("abort", onAbort, { once: true });
-    img.src = src;
-  });
-}
-
 /** Load illustration for a Dhammapada verse (shared-map aware). */
 async function loadVerseImage(
   verseId: number,
@@ -129,29 +114,7 @@ async function loadVerseImage(
 ): Promise<string | null> {
   const imageId = resolveVerseImageId(verseId);
   if (imageId == null) return null;
-  try {
-    const dataUrl = await invoke<string | null>(
-      "get_dhammapada_verse_image_display_data_url",
-      { imageId },
-    );
-    if (signal.aborted || !dataUrl) return null;
-    await preloadImage(dataUrl, signal);
-    return dataUrl;
-  } catch {
-    return null;
-  }
-}
-
-/** Load next Buddha gallery image for overlay background. */
-async function loadGalleryImage(signal: AbortSignal): Promise<string | null> {
-  try {
-    const dataUrl = await invoke<string>("next_image_display_data_url");
-    if (signal.aborted || !dataUrl) return null;
-    await preloadImage(dataUrl, signal);
-    return dataUrl;
-  } catch {
-    return null;
-  }
+  return resolveVerseImageSrc(imageId, signal);
 }
 
 function slotKeyDate(slot: ScheduleSlot, now: Date = new Date()): Date {
@@ -187,6 +150,8 @@ export default function OverlayDisplay() {
     todayTotal: 3,
     percent: 0,
   });
+  const [todayQueueIds, setTodayQueueIds] = useState<number[]>([]);
+  const [doneIds, setDoneIds] = useState<Set<number>>(() => new Set());
 
   const cycleRef = useRef(0);
   const activeController = useRef<AbortController | null>(null);
@@ -197,6 +162,7 @@ export default function OverlayDisplay() {
   const armScheduleTimersRef = useRef<() => Promise<void>>(async () => undefined);
   const restartCycleRef = useRef<() => void>(() => undefined);
   const cardActionRef = useRef<((a: CardAction) => void) | null>(null);
+  const galleryFallbackUsedRef = useRef(false);
   const currentVerseIdRef = useRef<number | null>(null);
   const configRef = useRef<AppConfig | null>(null);
   const savingRef = useRef(false);
@@ -243,6 +209,19 @@ export default function OverlayDisplay() {
       todayTotal: Math.max(s.todayTotal, cfg.dhammapadaDailyQuota || 3),
       percent: s.percent,
     });
+    setTodayQueueIds(todayQueueOrdered(cfg));
+    setDoneIds(memorizedSet(cfg));
+  }, []);
+
+  const handleGalleryImageError = useCallback(async () => {
+    if (galleryFallbackUsedRef.current) return;
+    galleryFallbackUsedRef.current = true;
+    try {
+      const dataUrl = await invoke<string>("next_image_display_data_url");
+      setImageSrc(dataUrl);
+    } catch (err) {
+      console.error("[gallery] onError fallback thất bại:", err);
+    }
   }, []);
 
   const saveQuiet = useCallback(async (cfg: AppConfig) => {
@@ -261,6 +240,7 @@ export default function OverlayDisplay() {
 
   const displayImageOnly = useCallback(
     async (cfg: AppConfig, durationSecs: number, signal: AbortSignal) => {
+      galleryFallbackUsedRef.current = false;
       applyVisuals(cfg);
       setShowDhamma(false);
       setActiveVerse(null);
@@ -268,18 +248,15 @@ export default function OverlayDisplay() {
       setVerseImageSrc(null);
       currentVerseIdRef.current = null;
 
-      const dataUrl = await invoke<string>("next_image_display_data_url");
+      const galleryUrl = await resolveGalleryImageSrc(signal);
       if (signal.aborted) return;
 
-      await preloadImage(dataUrl, signal);
-      if (signal.aborted) return;
-
-      setImageSrc(dataUrl);
       setPhase("hidden");
       await sleep(80, signal);
 
       await showOverlayWindow();
       await setClickThrough(true);
+      setImageSrc(galleryUrl);
       setPhase("entering");
       await playMusic(cfg);
       await sleep(cfg.fadeMs, signal);
@@ -290,6 +267,7 @@ export default function OverlayDisplay() {
       await sleep(cfg.fadeMs, signal);
       stopMusic();
       setPhase("hidden");
+      setImageSrc(null);
       await hideOverlayWindow();
     },
     [applyVisuals, playMusic, stopMusic],
@@ -297,6 +275,7 @@ export default function OverlayDisplay() {
 
   const displayDhammaSession = useCallback(
     async (cfgIn: AppConfig, durationSecs: number, signal: AbortSignal) => {
+      galleryFallbackUsedRef.current = false;
       const playMode = cfgIn.dhammapadaPlayMode ?? "learning";
       const quoteOnly = (cfgIn.dhammapadaMode ?? "withImage") === "quoteOnly";
 
@@ -312,7 +291,7 @@ export default function OverlayDisplay() {
           return;
         }
 
-        const galleryUrl = await loadGalleryImage(signal);
+        const galleryUrl = await resolveGalleryImageSrc(signal);
         if (signal.aborted) return;
 
         let verseUrl: string | null = null;
@@ -322,8 +301,6 @@ export default function OverlayDisplay() {
         }
 
         currentVerseIdRef.current = verse.id;
-        setImageSrc(galleryUrl);
-        setVerseImageSrc(verseUrl);
         setShowDhamma(true);
         setActiveVerse(verse);
         setDoneKind(null);
@@ -332,7 +309,8 @@ export default function OverlayDisplay() {
 
         await showOverlayWindow();
         await setClickThrough(true);
-
+        setImageSrc(galleryUrl);
+        setVerseImageSrc(verseUrl);
         setPhase("entering");
         await playMusic(cfgIn);
         await sleep(cfgIn.fadeMs, signal);
@@ -346,6 +324,7 @@ export default function OverlayDisplay() {
         setPhase("hidden");
         setShowDhamma(false);
         setActiveVerse(null);
+        setImageSrc(null);
         setVerseImageSrc(null);
         await hideOverlayWindow();
         return;
@@ -367,17 +346,17 @@ export default function OverlayDisplay() {
       const statsNow = progressStats(cfg);
 
       if (statsNow.complete) {
-        const galleryUrl = await loadGalleryImage(signal);
+        const galleryUrl = await resolveGalleryImageSrc(signal);
         if (signal.aborted) return;
         setShowDhamma(true);
         setActiveVerse(null);
         setDoneKind("journey");
-        setImageSrc(galleryUrl);
         setVerseImageSrc(null);
         setPhase("hidden");
         await sleep(80, signal);
         await showOverlayWindow();
         await setClickThrough(true);
+        setImageSrc(galleryUrl);
         setPhase("entering");
         await sleep(cfg.fadeMs, signal);
         setPhase("visible");
@@ -387,58 +366,47 @@ export default function OverlayDisplay() {
         setPhase("hidden");
         setShowDhamma(false);
         setDoneKind(null);
+        setImageSrc(null);
         await hideOverlayWindow();
         return;
       }
 
-      let queue = activeTodayQueue(cfg);
-      if (queue.length === 0) {
-        // Day complete — gallery + done card if quoteOnly, else image-only.
-        if (quoteOnly) {
-          const galleryUrl = await loadGalleryImage(signal);
-          if (signal.aborted) return;
-          setShowDhamma(true);
-          setActiveVerse(null);
-          setDoneKind("day");
-          setImageSrc(galleryUrl);
-          setVerseImageSrc(null);
-          setPhase("hidden");
-          await sleep(80, signal);
-          await showOverlayWindow();
-          await setClickThrough(true);
-          setPhase("entering");
-          await sleep(cfg.fadeMs, signal);
-          setPhase("visible");
-          await sleep(Math.min(durationSecs, 6) * 1000, signal);
-          setPhase("exiting");
-          await sleep(cfg.fadeMs, signal);
-          setPhase("hidden");
-          setShowDhamma(false);
-          setDoneKind(null);
-          await hideOverlayWindow();
-          return;
-        }
-        await displayImageOnly(cfg, durationSecs, signal);
-        return;
-      }
-
-      let verse = nextVerseInQueue(cfg);
+      // Prefer today's remaining goal; if done, continue with next unmemorized verse.
+      let verse = firstLearningVerse(cfg);
       if (!verse) {
-        await displayImageOnly(cfg, durationSecs, signal);
+        const galleryUrl = await resolveGalleryImageSrc(signal);
+        if (signal.aborted) return;
+        setShowDhamma(true);
+        setActiveVerse(null);
+        setDoneKind("journey");
+        setVerseImageSrc(null);
+        setPhase("hidden");
+        await sleep(80, signal);
+        await showOverlayWindow();
+        await setClickThrough(true);
+        setImageSrc(galleryUrl);
+        setPhase("entering");
+        await sleep(cfg.fadeMs, signal);
+        setPhase("visible");
+        await sleep(Math.min(durationSecs, 8) * 1000, signal);
+        setPhase("exiting");
+        await sleep(cfg.fadeMs, signal);
+        setPhase("hidden");
+        setShowDhamma(false);
+        setDoneKind(null);
+        setImageSrc(null);
+        await hideOverlayWindow();
         return;
       }
 
       // Gallery background once per cycle; verse illustration per verse
-      const galleryUrl = await loadGalleryImage(signal);
+      const galleryUrl = await resolveGalleryImageSrc(signal);
       if (signal.aborted) return;
-      setImageSrc(galleryUrl);
 
+      let initialVerseUrl: string | null = null;
       if (!quoteOnly) {
-        const verseUrl = await loadVerseImage(verse.id, signal);
+        initialVerseUrl = await loadVerseImage(verse.id, signal);
         if (signal.aborted) return;
-        setVerseImageSrc(verseUrl);
-      } else {
-        setVerseImageSrc(null);
       }
 
       setShowDhamma(true);
@@ -447,9 +415,10 @@ export default function OverlayDisplay() {
       await sleep(80, signal);
 
       await showOverlayWindow();
+      setImageSrc(galleryUrl);
+      setVerseImageSrc(initialVerseUrl);
 
-      // Rotate through today's queue until timeout path ends one show,
-      // or until queue empties via memorize.
+      // Rotate through learning verses until timeout, or journey completes via memorize.
       while (!signal.aborted && verse) {
         currentVerseIdRef.current = verse.id;
         setActiveVerse(verse);
@@ -470,12 +439,12 @@ export default function OverlayDisplay() {
         if (action === "memorized") {
           cfg = markMemorized(cfg, verse.id);
           await saveQuiet(cfg);
-          queue = activeTodayQueue(cfg);
-          if (queue.length === 0) {
+          verse = nextLearningVerse(cfg, verse.id);
+          if (!verse) {
             setActiveVerse(null);
             currentVerseIdRef.current = null;
             setVerseImageSrc(null);
-            setDoneKind(progressStats(cfg).complete ? "journey" : "day");
+            setDoneKind("journey");
             setPhase("entering");
             await sleep(cfg.fadeMs, signal);
             setPhase("visible");
@@ -484,25 +453,49 @@ export default function OverlayDisplay() {
             await sleep(cfg.fadeMs, signal);
             break;
           }
-          verse = nextVerseInQueue(cfg);
           setPhase("hidden");
+          setVerseImageSrc(null);
           await sleep(120, signal);
-          if (verse && !quoteOnly) {
+          if (!quoteOnly) {
             const verseUrl = await loadVerseImage(verse.id, signal);
             if (signal.aborted) return;
             setVerseImageSrc(verseUrl);
+          } else {
+            setVerseImageSrc(null);
           }
           continue;
         }
 
         if (action === "skip") {
-          verse = nextVerseInQueue(cfg, verse.id);
+          verse = nextLearningVerse(cfg, verse.id);
+          if (!verse) break;
           setPhase("hidden");
+          setVerseImageSrc(null);
           await sleep(120, signal);
-          if (verse && !quoteOnly) {
+          if (!quoteOnly) {
             const verseUrl = await loadVerseImage(verse.id, signal);
             if (signal.aborted) return;
             setVerseImageSrc(verseUrl);
+          } else {
+            setVerseImageSrc(null);
+          }
+          continue;
+        }
+
+        if (typeof action === "object" && "select" in action) {
+          const selected = getVerse(action.select);
+          if (selected && selected.id !== verse.id) {
+            verse = selected;
+            setPhase("hidden");
+            setVerseImageSrc(null);
+            await sleep(120, signal);
+            if (!quoteOnly) {
+              const verseUrl = await loadVerseImage(verse.id, signal);
+              if (signal.aborted) return;
+              setVerseImageSrc(verseUrl);
+            } else {
+              setVerseImageSrc(null);
+            }
           }
           continue;
         }
@@ -516,6 +509,7 @@ export default function OverlayDisplay() {
       setShowDhamma(false);
       setActiveVerse(null);
       setDoneKind(null);
+      setImageSrc(null);
       setVerseImageSrc(null);
       await hideOverlayWindow();
     },
@@ -689,29 +683,6 @@ export default function OverlayDisplay() {
 
   armScheduleTimersRef.current = armScheduleTimers;
 
-  const handleMemorizeCurrent = useCallback(async () => {
-    const cfgNow = configRef.current;
-    if ((cfgNow?.dhammapadaPlayMode ?? "learning") === "random") return;
-
-    if (cardActionRef.current) {
-      cardActionRef.current("memorized");
-      return;
-    }
-    const id = currentVerseIdRef.current;
-    let cfg = configRef.current;
-    if (!id || !cfg) {
-      try {
-        cfg = await invoke<AppConfig>("get_config");
-      } catch {
-        return;
-      }
-    }
-    if (!cfg || !id) return;
-    if ((cfg.dhammapadaPlayMode ?? "learning") === "random") return;
-    const updated = markMemorized(ensureTodayQueue(cfg), id);
-    await saveQuiet(updated);
-  }, [saveQuiet]);
-
   useEffect(() => {
     document.documentElement.classList.add("overlay-root");
     document.body.classList.add("overlay-root");
@@ -741,12 +712,6 @@ export default function OverlayDisplay() {
       .then((fn) => cleanups.push(fn))
       .catch(() => undefined);
 
-    listen("dhammapada-memorize-current", () => {
-      void handleMemorizeCurrent();
-    })
-      .then((fn) => cleanups.push(fn))
-      .catch(() => undefined);
-
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
         void armScheduleTimersRef.current();
@@ -762,7 +727,7 @@ export default function OverlayDisplay() {
       document.removeEventListener("visibilitychange", onVisibility);
       cleanups.forEach((fn) => fn());
     };
-  }, [armScheduleTimers, clearScheduleTimers, handleMemorizeCurrent, restartCycle, stopMusic]);
+  }, [armScheduleTimers, clearScheduleTimers, restartCycle, stopMusic]);
 
   const animClass =
     phase === "entering"
@@ -787,6 +752,7 @@ export default function OverlayDisplay() {
             draggable={false}
             className={`overlay-image overlay-image-animated max-h-[92vh] max-w-[92vw] object-contain drop-shadow-2xl ${animClass}`}
             style={{ animationDuration: `${fadeMs}ms` }}
+            onError={() => void handleGalleryImageError()}
           />
         )}
       </div>
@@ -805,9 +771,35 @@ export default function OverlayDisplay() {
           playMode={dhammaPlayMode}
           showVerseImage={dhammaMode === "withImage"}
           verseImageSrc={verseImageSrc}
+          queueIds={todayQueueIds}
+          doneSet={doneIds}
+          isTodayGoal={
+            configRef.current
+              ? isInTodayGoal(ensureTodayQueue(configRef.current), activeVerse.id)
+              : todayQueueIds.includes(activeVerse.id)
+          }
           phase={cardPhase === "exiting" ? "exiting" : cardPhase === "entering" ? "entering" : "visible"}
           onMemorized={() => cardActionRef.current?.("memorized")}
           onSkip={() => cardActionRef.current?.("skip")}
+          onSelectVerse={(id) => cardActionRef.current?.({ select: id })}
+          onPrevVerse={() => {
+            const cfg = configRef.current;
+            if (!cfg || !activeVerse) return;
+            const rolled = ensureTodayQueue(cfg);
+            const prev = isInTodayGoal(rolled, activeVerse.id)
+              ? prevVerseInQueue(rolled, activeVerse.id)
+              : prevLearningVerse(rolled, activeVerse.id);
+            if (prev) cardActionRef.current?.({ select: prev.id });
+          }}
+          onNextVerse={() => {
+            const cfg = configRef.current;
+            if (!cfg || !activeVerse) return;
+            const rolled = ensureTodayQueue(cfg);
+            const next = isInTodayGoal(rolled, activeVerse.id)
+              ? nextVerseInTodayQueue(rolled, activeVerse.id)
+              : nextLearningVerse(rolled, activeVerse.id);
+            if (next) cardActionRef.current?.({ select: next.id });
+          }}
         />
       )}
 
