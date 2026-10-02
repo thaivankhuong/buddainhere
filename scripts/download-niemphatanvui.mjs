@@ -197,8 +197,12 @@ async function main() {
   );
   console.log(`Manifest: ${MANIFEST_PATH}`);
   if (failures.length > 0) {
-    console.log(`${failures.length} ảnh lỗi:`);
-    for (const f of failures) console.log(`  - ${f.slug}: ${f.error}`);
+    console.warn(`\nCảnh báo: ${failures.length} ảnh không tải được (bỏ qua, tiếp tục build):`);
+    for (const f of failures) console.warn(`  - ${f.slug}: ${f.error}`);
+  }
+
+  if (imageCount === 0) {
+    console.error("Không có ảnh nào tải thành công — dừng build.");
     process.exitCode = 1;
   }
 }
